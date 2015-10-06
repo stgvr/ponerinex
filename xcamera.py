@@ -3,12 +3,15 @@ import json, socket, threading, time, select, os, urllib2, hashlib
 from os.path import basename #, getsize 
 
 class XCamera():
-  def __init__(self, ip="192.168.42.1", port=7878, dataport=8787, webport=80, preview=False):
+  def __init__(self, ip="192.168.42.1", port=7878, dataport=8787, webport=80, preview=False, enabled=False, index=0):
     self.ip = ip
     self.port = port
     self.dataport = dataport
     self.webport = webport
     self.webportopen = False
+    self.enabled = enabled
+    self.index = index
+    self.name = str(time.time())
     self.socketopen = -1
     self.datasocketopen = -1
     self.qsend = Queue()
@@ -126,12 +129,12 @@ class XCamera():
                    "support_auto_low_light",
                    "sw_version",
                    "timelapse_photo"]
-    threading.Thread(target=self.ThreadSend, name="ThreadSend").start()
+    threading.Thread(target=self.ThreadSend, name="%sThreadSend" %self.name).start()
 #     self.tsend= threading.Thread(target=self.ThreadSend)
 #     self.tsend.setDaemon(True)
 #     self.tsend.setName('ThreadSend')
 #     self.tsend.start()
-    threading.Thread(target=self.ThreadRecv, name="ThreadRecv").start()
+    threading.Thread(target=self.ThreadRecv, name="%sThreadRecv" %self.name).start()
 #     self.trecv= threading.Thread(target=self.ThreadRecv)
 #     self.trecv.setDaemon(True)
 #     self.trecv.setName('ThreadRecv')
@@ -548,7 +551,7 @@ class XCamera():
     self.setallok.clear()
     self.setallerror.clear()
     self.SendMsg('{"msg_id":3}')
-    threading.Thread(target=self.ThreadReadAllStatus, name="ThreadReadAllStatus").start()
+    threading.Thread(target=self.ThreadReadAllStatus, name="%sThreadReadAllStatus" %self.name).start()
   
   def ThreadReadAllStatus(self):
     self.setallok.wait(60)
@@ -574,7 +577,7 @@ class XCamera():
     self.setok.clear()
     self.seterror.clear()
     self.SendMsg('{"msg_id":2,"type":"%s","param":"%s"}' %(type,value))
-    threading.Thread(target=self.ThreadChangeSetting, args=(type,value,), name="ThreadChangeSetting").start()
+    threading.Thread(target=self.ThreadChangeSetting, args=(type,value,), name="%sThreadChangeSetting" %self.name).start()
 
   def ThreadChangeSetting(self, type, value):
     i = 0
@@ -614,7 +617,7 @@ class XCamera():
         return
       if self.dlstart.isSet():
         print "StartDownload", file, offset
-        threading.Thread(target=self.ThreadWebDownload, args=(file,),name="ThreadWebDownload").start()
+        threading.Thread(target=self.ThreadWebDownload, args=(file,),name="%sThreadWebDownload" %self.name).start()
         #threading.Thread(target=self.ThreadDownload2, args=(file,self.status["size"],self.status["offset"],),name="ThreadDownload2").start()
         break
         
@@ -623,7 +626,7 @@ class XCamera():
     self.dlcomplete.clear()
     self.dlstop.clear()
     self.dlerror.clear()
-    threading.Thread(target=self.ThreadWebDownload, args=(file,destdir,),name="ThreadWebDownload").start()
+    threading.Thread(target=self.ThreadWebDownload, args=(file,destdir,),name="%sThreadWebDownload" %self.name).start()
         
   def ThreadWebDownload(self, file, destdir):
     if not self.webportopen:
@@ -806,7 +809,7 @@ class XCamera():
     self.dlcomplete.clear()
     self.dlstop.clear()
     self.dlerror.clear()
-    threading.Thread(target=self.ThreadUpload, args=(filewithpath,),name="ThreadUpload").start()
+    threading.Thread(target=self.ThreadUpload, args=(filewithpath,),name="%sThreadUpload" %self.name).start()
     #ThisMD5 = hashlib.md5(ThisFileContent).hexdigest()
     
   def ThreadUpload(self, filewithpath):
@@ -905,7 +908,7 @@ class XCamera():
     if dir == "":
       self.lsdir.set() #error
       return
-    threading.Thread(target=self.ThreadChangeDir, args=(dir,), name="ThreadChangeDir").start()
+    threading.Thread(target=self.ThreadChangeDir, args=(dir,), name="%sThreadChangeDir" %self.name).start()
     
   def ThreadChangeDir(self, dir):
     self.SendMsg('{"msg_id":1283,"param":"%s"}' %dir)
@@ -928,7 +931,7 @@ class XCamera():
     if dir == "":
       self.lsdir.set() #error
       return
-    threading.Thread(target=self.ThreadRefreshFile, args=(dir,), name="ThreadRefreshFile").start()
+    threading.Thread(target=self.ThreadRefreshFile, args=(dir,), name="%sThreadRefreshFile" %self.name).start()
 
   def ThreadRefreshFile(self, dir):
     if not self.webportopen and dir == "/var/www/DCIM":
