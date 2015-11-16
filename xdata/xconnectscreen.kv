@@ -164,18 +164,19 @@
         Button:
           size_hint: 1, 1
           color: 1,1,1,1
-          disabled_color: 1,1,1,0.25
+          disabled_color: 1,1,1,1 #0.25
           #disabled: True
-          text: "Scene-01"
+          text: 'PonerineX' #"Scene-01"
           id: btnrecord
-          font_size: root.width/35
+          font_name: app.RobotoThin
+          font_size: 60 #root.width/35
           bold: True
           text_size: self.size
           halign: 'center'
-          valign: 'bottom'
-          background_normal: 'ximage/record_normal.png'
-          background_down: 'ximage/record_down.png'
-          background_disabled_normal: 'ximage/record_disabled.png'
+          valign: 'middle' #'bottom'
+          background_normal: 'ximage/transparent.png' #record_normal.png'
+          background_down: 'ximage/transparent.png' #record_down.png'
+          background_disabled_normal: 'ximage/transparent.png' #record_disabled.png'
           disabled: True
           always_release: False
         Button:
@@ -212,12 +213,13 @@
           background_normal: 'ximage/recording_down.png'
           background_down: 'ximage/recording_down.png'
         Label:       
-          color: 1,1,1,0.25
+          color: 1,1,1,1 #0.25
           size_hint: 1, 1
           size_hint: None, None
           size: root.width - root.width/5 - root.width/5, root.width/5
-          font_size: root.width/7
-          text: "00:00:00"
+          font_name: app.RobotoThin
+          font_size: 60 #root.width/7
+          text: "PonerineX" #"00:00:00"
         Label:
           size_hint: None, None
           size: root.width/5,root.width/5

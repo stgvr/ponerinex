@@ -1,17 +1,21 @@
 from Queue import Queue
 import json, socket, threading, time, select, os, urllib2, hashlib
 from os.path import basename #, getsize 
+from xcameratelnet import XCameraTelnet
 
 class XCamera():
-  def __init__(self, ip="192.168.42.1", port=7878, dataport=8787, webport=80, preview=False, enabled=False, index=0):
+  def __del__(self):
+    print "Delete Camera"
+    
+  def __init__(self, ip="192.168.42.1", port=7878, dataport=8787, webport=80, enabled=False, preview=False, number=0):
+    self.title = ""
+    self.enabled = enabled
     self.ip = ip
     self.port = port
     self.dataport = dataport
     self.webport = webport
-    self.webportopen = False
-    self.enabled = enabled
-    self.index = index
     self.name = str(time.time())
+    self.webportopen = False
     self.socketopen = -1
     self.datasocketopen = -1
     self.qsend = Queue()
@@ -29,7 +33,27 @@ class XCamera():
     self.filetaken = ""
     self.dirtaken = ""
     self.preview = preview
-    print "self.preview",preview
+    self.asid = ""
+    self.agc_index = 0
+    self.shutter_index = 0
+    self.iris_index = 0
+    self.dgain = 0
+    
+    self.spacetype = ''
+    #KB
+    self.spacetotal = 0
+    self.spacefree = 0
+    #second
+    self.remaintime = 0
+    #2560KB = 20Mbps
+    #3840KB = 30Mbps
+    self.bitrate = 3840
+    #memory usage %
+    self.memory = 0
+    #battery time second
+    self.battime = 0
+    
+    self.number = number
     #self.recording = False
     self.recordtime = "00:00:00"
     self.settings = []
@@ -67,15 +91,19 @@ class XCamera():
     self.setallerror = threading.Event()
     self.optok = threading.Event()
     self.opterror = threading.Event()
+    self.getexp = threading.Event()
     
-  def __str__(self):
-    info = dict()
-    info["ip"] = self.ip
-    info["port"] = self.port
-    info["link"] = self.link
-    return str(info)
+  # def __str__(self):
+    # info = dict()
+    # info["ip"] = self.ip
+    # info["port"] = self.port
+    # info["link"] = self.link
+    # return str(info)
 
   def LinkCamera(self):
+    #name for threading
+    self.title = "%f%s" %(time.time(), self.ip)
+    
     self.socketopen = -1
     self.datasocketopen = -1
     self.qsend = Queue()
@@ -98,6 +126,7 @@ class XCamera():
     self.setallerror.clear()
     self.optok.clear()
     self.opterror.clear()
+    self.getexp.clear()
     
     self.jsonon = False
     self.jsonoff = 0
@@ -109,10 +138,24 @@ class XCamera():
     self.status = {}
     self.filetaken = ""
     self.dirtaken = ""
-    #self.recording = False
+    self.asid = ""
+    self.agc_index = 0
+    self.shutter_index = 0
+    self.iris_index = 0
+    self.dgain = 0
+    
+    self.spacetype = ''
+    self.spacetotal = 0
+    self.spacefree = 0
+    self.remaintime = 0
+    self.memory = 0
+    self.bitrate = 3840
+    self.battime = 0
+    
     self.recording.clear()
     self.recordtime = "00:00:00"
     self.settings = []
+    self.cfgdict = {}
     self.settable = {}
     self.readonly = ["app_status",
                    "dev_functions",
@@ -129,17 +172,89 @@ class XCamera():
                    "support_auto_low_light",
                    "sw_version",
                    "timelapse_photo"]
-    threading.Thread(target=self.ThreadSend, name="%sThreadSend" %self.name).start()
+    threading.Thread(target=self.ThreadSend, name="%sThreadSend" %self.title).start()
 #     self.tsend= threading.Thread(target=self.ThreadSend)
 #     self.tsend.setDaemon(True)
 #     self.tsend.setName('ThreadSend')
 #     self.tsend.start()
-    threading.Thread(target=self.ThreadRecv, name="%sThreadRecv" %self.name).start()
+    threading.Thread(target=self.ThreadRecv, name="%sThreadRecv" %self.title).start()
 #     self.trecv= threading.Thread(target=self.ThreadRecv)
 #     self.trecv.setDaemon(True)
 #     self.trecv.setName('ThreadRecv')
 #     self.trecv.start()
-
+  
+  def Buzzer(self, type=0, username=""): #0-by telnet, 1-msg_id
+    if type == 0:
+      self.getexp.clear()
+      threading.Thread(target=self.DoBuzzerTelnet, args=(username,), name="%sDoBuzzerTelnet%d" %(self.title,self.number)).start()
+    else:
+      pass
+  
+  def DoBuzzerTelnet(self, uname):
+    ctelnet = XCameraTelnet(ip=self.ip,username=uname,title=self.title)
+    commit = ctelnet.commit
+    cmdlist = ['cp -f /tmp/fuse_a/custom/buz300ms.ash /tmp/fuse_a/custom/action.ash']
+    msglist = ['buz300ms.ash']
+    ctelnet.RunCommand(cmdlist, msglist)
+    while True:
+      commit.wait(1)
+      if commit.isSet():
+        break
+      if ctelnet.failure:
+        break
+    self.getexp.set()
+  
+  def SetAEInfo(self, asid, username=""):
+    self.asid = ""
+    self.getexp.clear()
+    threading.Thread(target=self.DoSetAEInfo, args=(asid,username,), name="%sDoSetAEInfo%d" %(self.title,self.number)).start()
+    
+  def DoSetAEInfo(self, asid, uname):
+    ctelnet = XCameraTelnet(ip=self.ip,username=uname,title=self.title)
+    commit = ctelnet.commit
+    cmdlist = ['rm -f /tmp/fuse_a/custom/asid.txt && sleep 1 && /tmp/fuse_a/custom/setexp.sh %s' %asid]
+    msglist = ['[A/S/I/D]']
+    ctelnet.RunCommand(cmdlist, msglist)
+    while True:
+      commit.wait(1)
+      if commit.isSet():
+        self.asid = ctelnet.retvalue
+        break
+      if ctelnet.failure:
+        self.asid = ""
+        break
+    self.getexp.set()
+    
+  def GetAEInfo(self, username=""):
+    self.asid = ""
+    self.getexp.clear()
+    threading.Thread(target=self.DoGetAEInfo, args=(username,), name="%sDoGetAEInfo%d" %(self.title,self.number)).start()
+    
+  def DoGetAEInfo(self, uname):
+    ctelnet = XCameraTelnet(ip=self.ip,username=uname,title=self.title)
+    commit = ctelnet.commit
+    cmdlist = ['rm -f /tmp/fuse_a/custom/asid.txt && sleep 1 && /tmp/fuse_a/custom/getexp.sh']
+    msglist = ['[A/S/I/D]']
+    ctelnet.RunCommand(cmdlist, msglist)
+    while True:
+      commit.wait(1)
+      if commit.isSet():
+        self.asid = ctelnet.retvalue
+        asid = self.asid.split()
+        self.agc_index = int(asid[0])
+        self.shutter_index = int(asid[1])
+        self.iris_index = int(asid[2])
+        self.dgain = int(asid[3])
+        break
+      if ctelnet.failure:
+        self.asid = ""
+        self.agc_index = 0
+        self.shutter_index = 0
+        self.iris_index = 0
+        self.dgain = 0
+        break
+    self.getexp.set()
+    
   def UnlinkCamera(self):
     if self.link:
       self.SendMsg('{"msg_id":258}')
@@ -191,13 +306,15 @@ class XCamera():
           if allowsendout:
             data["token"] = self.token
             #print "sent out:", json.dumps(data, indent=2)
-            
             self.msgbusy = data["msg_id"]
             if data.has_key("type"):
               if data.has_key("param"):
                 smsg = '{"token":%d,"msg_id":%d,"type":"%s","param":"%s"}' %(data["token"],data["msg_id"],data["type"],data["param"])
               else:
                 smsg = '{"token":%d,"msg_id":%d,"type":"%s"}' %(data["token"],data["msg_id"],data["type"])
+              # check card space
+              if data["msg_id"] == 5:
+                self.spacetype = data["type"]
             elif data.has_key("param"):
               smsg = '{"token":%d,"msg_id":%d,"param":"%s"}' %(data["token"],data["msg_id"],data["param"])
             else:
@@ -231,30 +348,37 @@ class XCamera():
     if data.has_key("param"):
       if data["type"] == "battery":
         self.status["battery"] = data["param"]
+        self.battime = 0
         self.status["adapter_status"] = "0"
       elif data["type"] == "adapter":
         self.status["battery"] = data["param"]
         self.status["adapter_status"] = "1"
-      #elif data["type"] == "start_photo_capture":
-        #self.cambusy = True
+      elif data["type"] == "battery_status":
+        if data["param"] == "-1":
+          self.status["battery"] = "0"
+          self.battime = 0
       elif data["type"] == "photo_taken":
         self.cambusy = False
         self.status[data["type"]] = data["param"]
         arr = data["param"].split("/")
         if len(arr) == 6:
-          self.filetaken = arr[5]
+          self.filetaken = data["param"]
           self.dirtaken = arr[4]
         print self.dirtaken, self.filetaken
+        #self.SendMsg('{"msg_id":1026,"param":"%s"}' %data["param"])
         self.taken.set()
+        self.CardUsage("free")
       elif data["type"] == "video_record_complete":
         self.cambusy = False
         self.showtime = False
         self.status[data["type"]] = data["param"]
         arr = data["param"].split("/")
         if len(arr) == 6:
-          self.filetaken = arr[5]
+          self.filetaken = data["param"]
           self.dirtaken = arr[4]
         print self.dirtaken, self.filetaken
+        print 'check %s' %data['param']
+        self.SendMsg('{"msg_id":1026,"param":"%s"}' %data["param"])
         self.taken.set()
       elif data["type"] == "get_file_complete":
         self.dlcomplete.set()
@@ -271,6 +395,14 @@ class XCamera():
       #{"msg_id":7,"type":"put_file_fail","param": 0}
       elif data["type"] == "put_file_fail":
         self.dlerror.set()
+      elif data["type"] == "sd_card_status":
+        self.status[data["type"]] = data["param"]
+        if data["param"] == "remove":
+          self.spacetotal = 0
+          self.spacefree = 0
+          self.memory = -2
+        elif data["param"] == "insert":
+          self.CardUsage()
       else:
         self.status[data["type"]] = data["param"]
     else:
@@ -281,11 +413,13 @@ class XCamera():
         if self.showtime:
           time.sleep(1)
           self.SendMsg('{"msg_id":515}')
+      elif data["type"] == "precise_capture_data_ready":
+        self.recording.set()
       elif data["type"] == "piv_complete":
         self.cambusy = False
         self.filetaken = "piv_complete"
         self.dirtaken = ""
-        self.taken.set()
+        #self.taken.set()
       elif data["type"] == "wifi_will_shutdown":
         self.wifioff.set()
         self.link = False
@@ -299,6 +433,13 @@ class XCamera():
       elif data["type"] == "vf_stop":
         self.vfstart = False
         print "settings settable"
+      elif data["type"] == "LOW_SPEED_CARD":
+        #{u'msg_id': 7, u'type': u'LOW_SPEED_CARD'}
+        pass
+      elif data["type"] == "switch_to_rec_mode":
+        self.cfgdict["system_mode"] = "record"
+      elif data["type"] == "switch_to_cap_mode":  
+        self.cfgdict["system_mode"] = "capture"
 
   '''
   normal rval = 0
@@ -310,6 +451,12 @@ class XCamera():
   '''
   # rval message
   def JsonRval(self, data):
+    # drop token and unlinkcamera
+    if data["msg_id"] == 258:
+      self.token = 0
+      self.link = False
+      self.UnlinkCamera()
+      return
     # token lost, need to re-new token
     if data["msg_id"] == 257 and data["rval"] < 0:
       self.token = 0
@@ -317,7 +464,7 @@ class XCamera():
       self.srv.send('{"msg_id":257,"token":0}')
       self.SendMsg('{"msg_id":%d}' %data["msg_id"])
     # allow next msg send out
-    if self.msgbusy == data["msg_id"] and data["msg_id"] <> 258:
+    if self.msgbusy == data["msg_id"]:
       self.msgbusy = 0
     # error rval < 0, clear msg_id
     if data["rval"] < 0:
@@ -338,16 +485,30 @@ class XCamera():
         self.seterror.set()
       elif data["msg_id"] == 3:
         self.setallerror.set()
+      elif data["msg_id"] == 4:
+        self.seterror.set()
+        self.setok.set()
+      elif data["msg_id"] == 5:
+        if self.spacetype == "total":
+          self.spacetotal = 0
+          self.memory = -2
+        elif self.spacetype == "free":
+          self.spacefree = 0
+      elif data["msg_id"] == 13:
+        self.status["battery"] = "0"
+        self.status["adapter_status"] = "0"
+        self.battime = 0
+      elif data["msg_id"] == 514 and self.recording.isSet():
+        self.SendMsg('{"msg_id":514}')
+      elif data["msg_id"] == 515:
+        if self.showtime and self.recording.isSet():
+          time.sleep(1)
+          self.SendMsg('{"msg_id":515}')
       data["msg_id"] = 0
     # get token
     if data["msg_id"] == 257:
       self.token = data["param"]
       self.link = True
-    # drop token
-    elif data["msg_id"] == 258:
-      self.token = 0
-      self.link = False
-      self.UnlinkCamera()
     # vf start
     elif data["msg_id"] == 259:
       self.webportopen = True
@@ -357,17 +518,18 @@ class XCamera():
     elif data["msg_id"] in (1,2):
       if data["msg_id"] == 2:
         self.setok.set()
-      st = json.loads('{"%s":"%s"}' %(data["type"],data["param"]))
-      self.cfgdict.update(st)
-      #print "msg_id",data["msg_id"],self.cfgdict
-      ifound = False
-      for item in self.settings:
-        if item.keys()[0] == st.keys()[0]:
-          item.update(st)
-          ifound = True
-          break
-      if not ifound:
-        self.settings.append(st)
+      if data.has_key("type") and data.has_key("param"):
+        st = json.loads('{"%s":"%s"}' %(data["type"],data["param"]))
+        self.cfgdict.update(st)
+        #print "msg_id",data["msg_id"],self.cfgdict
+        ifound = False
+        for item in self.settings:
+          if item.keys()[0] == st.keys()[0]:
+            item.update(st)
+            ifound = True
+            break
+        if not ifound:
+          self.settings.append(st)
     # all config information
     elif data["msg_id"] == 3:
       #self.settings = json.dumps(data["param"], indent=0).replace("{\n","{").replace("\n}","}")
@@ -379,7 +541,26 @@ class XCamera():
       self.setallok.set()
       #print json.dumps(self.cfgdict,indent=2)
       #self.status["config"] = data["param"]
-    # battery status
+    #format card
+    elif data["msg_id"] == 4:
+      self.setok.set()
+      self.CardUsage('free')
+    #check card space
+    elif data["msg_id"] == 5:
+      if self.spacetype == "total":
+        self.spacetotal = data["param"]
+        print "Total Space: %d" %data["param"]
+      elif self.spacetype == "free":
+        self.spacefree = data["param"]
+        print "Free Space: %d" %data["param"]
+        if self.spacefree <> 0:
+          self.remaintime = self.spacefree / self.bitrate
+          print "Remain Time: %d Second(s)" %self.remaintime
+        if self.spacetotal <> 0:
+          self.memory = int(float(self.spacetotal-self.spacefree)/self.spacetotal*100)
+        else:
+          self.memory = -2
+        print "Memory Usage: %d" %self.memory
     elif data["msg_id"] == 9:
       if data["permission"] == "settable":
         self.settable[data["param"]] = data["options"]
@@ -388,8 +569,14 @@ class XCamera():
       if self.optcount == 0:
         print "read all options"
         self.optok.set()
+    # battery status
     elif data["msg_id"] == 13 and data.has_key("param"):
-      self.status["battery"] = data["param"]
+      if int(data["param"]) >= 0:
+        self.status["battery"] = data["param"]
+        self.battime = 0
+      else:
+        self.status["battery"] = "0"
+        self.battime = 0
       if data["type"] == "battery":
         self.status["adapter_status"] = "0"
       else: #adapter
@@ -416,6 +603,17 @@ class XCamera():
       if self.showtime and self.recording.isSet():
         time.sleep(1)
         self.SendMsg('{"msg_id":515}')
+    # get file info
+    elif data["msg_id"] == 1026:
+      if data.has_key("media_type") and data.has_key("resolution") and data.has_key("size") and data.has_key("duration"):
+        if data["resolution"] <> "320x240":
+          bitrate = data["size"] / int(data["duration"]) / 1024
+          if bitrate > 3840:
+            self.bitrate = bitrate
+          else:
+            self.bitrate = 3840
+          print "New Bit Rate %d KBps" %self.bitrate
+          self.CardUsage('free')
     # change dir
     elif data["msg_id"] == 1283:
       self.status["pwd"] = data["pwd"]
@@ -437,6 +635,8 @@ class XCamera():
       self.dlstart.set()
       
   def RecvMsg(self):
+    if self.quit.isSet():
+      return
     if self.wifioff.isSet():
       return
     try:
@@ -465,10 +665,11 @@ class XCamera():
       if self.quit.isSet():
         return
     while self.socketopen == 0:
-      if self.wifioff.isSet():
+      if self.quit.isSet():
         print "quick ThreadRecv"
         return
-      if self.quit.isSet():
+      if self.wifioff.isSet():
+        print "quick ThreadRecv"
         return
       self.RecvMsg()
 
@@ -498,6 +699,9 @@ class XCamera():
     self.srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     self.srv.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    #test some options
+    self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE, 1)
+    self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     self.socketopen = self.srv.connect_ex((self.ip, self.port))
     print "socket status: %d" %self.socketopen
     if self.socketopen == 0:
@@ -507,14 +711,24 @@ class XCamera():
       self.srv.setblocking(0)
 
   def Disconnect(self):
-    if self.socketopen == 0:
-      self.socketopen = -1
-      try:
-        self.srv.close()
-      except:
-        pass
-      finally:
-        self.quit.set()
+    self.socketopen = -1
+    self.quit.set()
+    ilen = len(self.title)
+    for thread in threading.enumerate():
+      if thread.isAlive() and thread.name[0:ilen] == self.title:
+        print "camera.py.Disconnect kill: %s" %thread.name
+        try:
+          thread._Thread__stop()
+        except:
+          pass
+    #if self.socketopen == 0:
+    #  self.socketopen = -1
+    try:
+      self.srv.close()
+    except:
+      pass
+    finally:
+      self.quit.set()
         #self.taken.set()
 
   def RecordTime(self, seconds):
@@ -532,6 +746,7 @@ class XCamera():
       
   def TakePhoto(self, type="precise quality"):
     if type == "precise quality":
+      self.recording.clear()
       self.SendMsg('{"msg_id":769}')
 
   def StartRecord(self, showtime=True):
@@ -551,7 +766,7 @@ class XCamera():
     self.setallok.clear()
     self.setallerror.clear()
     self.SendMsg('{"msg_id":3}')
-    threading.Thread(target=self.ThreadReadAllStatus, name="%sThreadReadAllStatus" %self.name).start()
+    threading.Thread(target=self.ThreadReadAllStatus, name="%sThreadReadAllStatus" %self.title).start()
   
   def ThreadReadAllStatus(self):
     self.setallok.wait(60)
@@ -577,7 +792,7 @@ class XCamera():
     self.setok.clear()
     self.seterror.clear()
     self.SendMsg('{"msg_id":2,"type":"%s","param":"%s"}' %(type,value))
-    threading.Thread(target=self.ThreadChangeSetting, args=(type,value,), name="%sThreadChangeSetting" %self.name).start()
+    threading.Thread(target=self.ThreadChangeSetting, args=(type,value,), name="%sThreadChangeSetting" %self.title).start()
 
   def ThreadChangeSetting(self, type, value):
     i = 0
@@ -617,7 +832,7 @@ class XCamera():
         return
       if self.dlstart.isSet():
         print "StartDownload", file, offset
-        threading.Thread(target=self.ThreadWebDownload, args=(file,),name="%sThreadWebDownload" %self.name).start()
+        threading.Thread(target=self.ThreadWebDownload, args=(file,),name="%sThreadWebDownload" %self.title).start()
         #threading.Thread(target=self.ThreadDownload2, args=(file,self.status["size"],self.status["offset"],),name="ThreadDownload2").start()
         break
         
@@ -626,7 +841,7 @@ class XCamera():
     self.dlcomplete.clear()
     self.dlstop.clear()
     self.dlerror.clear()
-    threading.Thread(target=self.ThreadWebDownload, args=(file,destdir,),name="%sThreadWebDownload" %self.name).start()
+    threading.Thread(target=self.ThreadWebDownload, args=(file,destdir,),name="%sThreadWebDownload" %self.title).start()
         
   def ThreadWebDownload(self, file, destdir):
     if not self.webportopen:
@@ -809,7 +1024,7 @@ class XCamera():
     self.dlcomplete.clear()
     self.dlstop.clear()
     self.dlerror.clear()
-    threading.Thread(target=self.ThreadUpload, args=(filewithpath,),name="%sThreadUpload" %self.name).start()
+    threading.Thread(target=self.ThreadUpload, args=(filewithpath,),name="%sThreadUpload" %self.title).start()
     #ThisMD5 = hashlib.md5(ThisFileContent).hexdigest()
     
   def ThreadUpload(self, filewithpath):
@@ -908,7 +1123,7 @@ class XCamera():
     if dir == "":
       self.lsdir.set() #error
       return
-    threading.Thread(target=self.ThreadChangeDir, args=(dir,), name="%sThreadChangeDir" %self.name).start()
+    threading.Thread(target=self.ThreadChangeDir, args=(dir,), name="%sThreadChangeDir" %self.title).start()
     
   def ThreadChangeDir(self, dir):
     self.SendMsg('{"msg_id":1283,"param":"%s"}' %dir)
@@ -931,7 +1146,7 @@ class XCamera():
     if dir == "":
       self.lsdir.set() #error
       return
-    threading.Thread(target=self.ThreadRefreshFile, args=(dir,), name="%sThreadRefreshFile" %self.name).start()
+    threading.Thread(target=self.ThreadRefreshFile, args=(dir,), name="%sThreadRefreshFile" %self.title).start()
 
   def ThreadRefreshFile(self, dir):
     if not self.webportopen and dir == "/var/www/DCIM":
@@ -974,12 +1189,33 @@ class XCamera():
         r.append(json.loads(fdict))
     #print "create file list", r
     return r
-    
+  
+  def CardUsage(self, type="all"):
+    if type == "total":
+      self.SendMsg('{"msg_id":5,"type":"total"}')
+    elif type == "free":
+      self.SendMsg('{"msg_id":5,"type":"free"}')
+    else:
+      self.SendMsg('{"msg_id":5,"type":"total"}')
+      self.SendMsg('{"msg_id":5,"type":"free"}')
+
+  def CheckSettings(self, type=""):
+    if type == "":
+      self.SendMsg('{"msg_id":3}')
+    else:
+      self.SendMsg('{"msg_id":1,"type":"%s"}' %type)
+  
   def FormatCard(self):
+    self.setok.clear()
+    self.seterror.clear()
     self.SendMsg('{"msg_id":4}')
 
   def Reboot(self):
     self.SendMsg('{"msg_id":2,"type":"dev_reboot","param":"on"}')
+    time.sleep(2)
+    self.wifioff.set()
 
   def RestoreFactory(self):
     self.SendMsg('{"msg_id":2,"type":"restore_factory_settings","param":"on"}')
+    time.sleep(2)
+    self.wifioff.set()
