@@ -1,0 +1,52 @@
+#:kivy 1.9.0
+#:import kivy kivy
+#:import Factory kivy.factory.Factory 
+
+# class XRecordScreen(Screen):
+  # pass
+<DLabel@Label>:
+  bold: True
+  color: 0.25,0.25,0.25,1
+  font_name: 'DroidSans'
+  font_size: root.parent.width/40
+  text_size: self.size
+  valign: 'top'
+  halign: 'left'
+
+#<RLabel@Label>:
+<RLabel>:
+  color: 1,1,1,1 #0.15,0.15,0.15,1
+  font_name: 'Roboto-Thin' #app.RobotoThin
+  #font_size: root.parent.width/40
+  text_size: self.size
+  valign: 'top'
+  halign: 'left'
+
+#<CLabel@Label>:
+<CLabel>:
+  size_hint: None, None
+  size: (root.parent.width-root.parent.width/15*2)/7, (root.parent.width-root.parent.width/15*2)/7
+  #text: ''
+  Label:
+    size_hint: 1,1
+    color: 0,0,0,0
+    text: root.text
+    text_size: self.size
+    valign: 'middle'
+    halign: 'center'
+    font_size: root.parent.width/25
+    font_name: 'Roboto-Thin'
+  Image:
+    size_hint: 1,1
+    color: 0,0,0,0
+
+<XRecordScreen>:
+  AnchorLayout:
+    anchor_x: 'left'
+    anchor_y: 'top'
+    canvas:
+      Color: 
+        rgba: 0,0,0,1 #0.95,0.95,0.95,1
+      Rectangle:
+        size: self.size
+        pos: self.pos

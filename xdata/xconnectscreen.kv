@@ -1,0 +1,225 @@
+#:kivy 1.9.0
+#:import kivy kivy
+#:import Factory kivy.factory.Factory 
+
+# class XConnectScreen(Screen):
+  # pass
+
+<XConnectScreen>:
+  AnchorLayout:
+    anchor_x: 'left'
+    anchor_y: 'top'
+    canvas:
+      Color: 
+        rgba: 0,0,0,1 #0.9,0.9,0.9,1
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    
+    # Program Title
+    BoxLayout:
+      orientation: 'horizontal'
+      canvas:
+        Color: 
+          rgba: 0.95,0.95,0.95,1
+        Rectangle:
+          size: self.size
+          pos: self.pos
+      size_hint: None, None
+      size: root.width, root.width/15 + root.width/20
+      padding: root.width/40, root.width/40, root.width/20, root.width/40
+      spacing: root.width/40
+      Button:
+        size_hint: None, None
+        size: root.width/15, root.width/15
+        background_normal: 'ximage/logo.png'
+        background_down: 'ximage/logo.png'
+        on_release: root.manager.RefreshAllControls(self)
+      Label:
+        text_size: self.size
+        size_hint: None, None
+        size: root.width-(root.width/15+root.width/15*5+root.width/40*3+root.width/20), root.width/15
+        halign: 'left'
+        valign: 'middle'
+        color: 0,0,0,1
+        font_size: root.width/25
+        text: '[size=%d]Ponerine.[/size][size=%d][b]X[/b][/size][sub] %s[/sub]' %(root.width/22,root.width/18,app.version)
+        markup: True
+      Spinner:
+        size_hint: None, None
+        size: root.width/15*5, root.width/15
+        text_size: self.size
+        halign: 'right'
+        valign: 'middle'
+        color: 0,0,1,1
+        values: ("Camera 1","Camera 2","Camera 3","Camera 4","Camera 5","Camera 6","Advanced")
+        background_normal: 'ximage/setting.png'
+        background_down: 'ximage/setting.png'
+        on_text: root.manager.ConfigPopupOpen(self, self.text)
+    
+    # Camera Information Display
+    GridLayout:
+      size_hint: None, None
+      size: root.width, (root.width - root.width/12*4)/3*2 + root.width/6 + root.width/25*1
+      spacing: root.width/12, root.width/25
+      padding: root.width/12, root.width/6, root.width/12, 0
+      cols: 3
+      #TextInput:
+        #text: "W: %d H: %d" %(root.width, (root.width - root.width/12*4)/3*2 + root.width/6 + root.width/25*1)
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_link_mid_bat.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "%s" %self.font_size
+        markup: True
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_link_charge.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "[b][color=50e3c2]ON[/color] - [color=d0021b]65%[/color][/b]"
+        markup: True
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_err_none_bat.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "[b][color=d0021b]OFF[/color]"
+        markup: True
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_err_low_bat.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "[b][color=d0021b]OFF[/color] - [color=d0021b]30%[/color][/b]"
+        markup: True
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_on_full_bat.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "[b][color=7ed321]OK[/color] - [color=7ed321]80%[/color][/b]"
+        markup: True
+      Button:
+        background_normal: 'ximage/cam_disabled_none_bat.png'
+        background_down: 'ximage/cam_on_charge.png'
+        #disabled: True
+        text_size: self.size
+        font_size: root.width/35
+        halign: 'center'
+        valign: 'bottom'
+        text: "[b][color=7ed321]OK[/color] - [color=7ed321]75%[/color][/b]"
+        markup: True
+    
+    # Camera Control Buttons
+    AnchorLayout:
+      anchor_x: 'center'
+      anchor_y: 'bottom'
+      size_hint: None, None
+      size: root.width, root.height - root.width/20 #* 0.95
+      #padding: 0,0,0,root.width/10
+      
+      GridLayout:
+        size_hint: None, None
+        size: root.width, root.width/3 #root.width/6 + root.width/12 + (root.width - root.width/12*4)/3
+        spacing: 0, 0
+        #spacing: root.width/12, 0
+        padding: 0,0,0,0
+        #padding: root.width/12, root.width/6, root.width/12, 0
+        cols: 3
+
+        Button:
+          size_hint: 1, 1
+          color: 1,1,1,1
+          disabled_color: 1,1,1,0.25
+          #bold: True
+          text: "Buzzer"
+          id: btnconnect
+          font_size: root.width/35
+          text_size: self.size
+          halign: 'center'
+          valign: 'bottom'
+          background_normal: 'ximage/buzzer_normal.png'
+          background_down: 'ximage/buzzer_down.png'
+          background_disabled_normal: 'ximage/buzzer_disabled.png'
+          on_release: root.manager.Connect(self)
+          disabled: True
+          always_release: False
+        Button:
+          size_hint: 1, 1
+          color: 1,1,1,1
+          disabled_color: 1,1,1,1 #0.25
+          #disabled: True
+          text: 'PonerineX' #"Scene-01"
+          id: btnrecord
+          font_name: app.RobotoThin
+          font_size: 60 #root.width/35
+          bold: True
+          text_size: self.size
+          halign: 'center'
+          valign: 'middle' #'bottom'
+          background_normal: 'ximage/transparent.png' #record_normal.png'
+          background_down: 'ximage/transparent.png' #record_down.png'
+          background_disabled_normal: 'ximage/transparent.png' #record_disabled.png'
+          disabled: True
+          always_release: False
+        Button:
+          size_hint: 1, 1
+          color: 1,1,1,1
+          disabled_color: 1,1,1,0.25
+          #disabled: True
+          text: "Preview"
+          id: btnphoto
+          font_size: root.width/35
+          text_size: self.size
+          halign: 'center'
+          valign: 'bottom'
+          background_normal: 'ximage/preview_normal.png'
+          background_down: 'ximage/preview_down.png'
+          background_disabled_normal: 'ximage/preview_disabled.png'
+          disabled: True
+          always_release: False
+    
+    # Camera Recording Time Display
+    AnchorLayout:
+      anchor_x: 'center'
+      anchor_y: 'bottom'
+      size_hint: None, None
+      size: root.width, root.height - root.width/3 - root.width/20 - root.width/20 #* 0.95
+      GridLayout:
+        size_hint: 1, None
+        height: root.width/5 + root.width/40 + root.width/40
+        padding: root.width/40, 0, root.width/40, 0
+        cols: 3
+        Button:
+          size_hint: None, None
+          size: root.width/5,root.width/5
+          background_normal: 'ximage/recording_down.png'
+          background_down: 'ximage/recording_down.png'
+        Label:       
+          color: 1,1,1,1 #0.25
+          size_hint: 1, 1
+          size_hint: None, None
+          size: root.width - root.width/5 - root.width/5, root.width/5
+          font_name: app.RobotoThin
+          font_size: 60 #root.width/7
+          text: "PonerineX" #"00:00:00"
+        Label:
+          size_hint: None, None
+          size: root.width/5,root.width/5
