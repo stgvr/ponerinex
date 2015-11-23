@@ -1,0 +1,264 @@
+#:kivy 1.9.0
+#:import kivy kivy
+#:import Factory kivy.factory.Factory
+
+<XCfgAdvanced>:
+  orientation: 'vertical'
+  canvas:
+    Color: 
+      rgba: 0,0,0,1
+    Rectangle:
+      size: self.size
+      pos: self.pos
+  # Program Title
+  BoxLayout:
+    orientation: 'horizontal'
+    canvas:
+      Color: 
+        rgba: 0.95,0.95,0.95,1
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, root.width/15 + root.width/20
+    padding: root.width/30, root.width/40, root.width/30, root.width/40
+    spacing: root.width/40
+    RLabel:
+      text_size: self.size
+      size_hint: None, None
+      size: root.width - root.width/15*3 - root.width/40*2, root.width/15 #root.width-(root.width/15+root.width/15*5+root.width/40*3+root.width/20), root.width/15
+      halign: 'left'
+      valign: 'middle'
+      color: 0,0,0,1
+      font_size: root.width/20
+      #text: '[size=%d]Ponerine.X[/size][sub] %s[/sub]' %(root.width/15,app.version)
+      text: 'Advanced Settings'
+    Label:
+      size_hint: 1, 1
+  AnchorLayout:
+    anchor_x: 'left'
+    anchor_y: 'top'
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37+root.width/9+root.width/15)
+    # Scene Name & Shot Title
+    GridLayout:
+      size_hint: None, None
+      size: root.width, (root.width/30+root.width/37+root.width/9)
+      spacing: root.width/30, 0
+      padding: root.width/15, root.width/30, 0, 0 #, root.width/12, 0
+      cols: 2
+      DLabel:
+        color: (1,1,1,1)
+        size_hint: None, None
+        size: root.width/5*4-root.width/15-root.width/60, root.width/37
+        text: 'SCENE NAME'# %d %d %d %d' %(root.width,self.width,root.width/15,root.width/30)
+      DLabel:
+        color: (1,1,1,1)
+        size_hint: None, None
+        size: root.width/5-root.width/60, root.width/37
+        text: 'SHOT'# %d' %self.width
+    # Scene & Shot
+    GridLayout:
+      canvas:
+        Color: 
+          rgba: 1,1,1,0
+        Rectangle:
+          size: self.size
+          pos: self.pos
+      size_hint: None, None
+      size: root.width, (root.width/30+root.width/37*2+root.width/9)
+      spacing: root.width/30, 0
+      padding: root.width/15, root.width/30+root.width/37*2, 0, 0 #, root.width/12, 0
+      cols: 2
+      RTextInput:
+        id: idxscenename
+        size_hint: None, None
+        size: root.width/5*4-root.width/15-root.width/60, root.width/9+root.width/50
+        text: root.scenename #%(self.height,root.width/9)
+      RLabel:
+        #name: 'sceneshot'
+        size_hint: None, None
+        size: root.width/5-root.width/60, root.width/9+root.width/50
+        font_size: root.width/10
+        text: '%02d' %root.sceneshot # %d' %root.width
+  # Titles Auto Rename & Duplicated
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    cols: 2
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'RENAME VIDEO'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'DUPLICATED VIDEO'
+  # Options Auto Rename & Duplicated
+  GridLayout:
+    size_hint: None, None
+    size: root.width, root.width/10 + root.width/30
+    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    spacing: root.width/15, 0
+    cols: 2
+    SLabel:
+      id: idxautorename
+      #size: (root.width-root.width/15*2)/2 - root.width/20, root.width/10
+      index: root.autorename
+    SLabel:
+      id: idxmoveduplicated
+      #size: (root.width-root.width/15*2)/2 - root.width/20, root.width/10
+      option: ["disable","trashbin"]
+      index: root.moveduplicated
+  # Titles Buzzer
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    cols: 2
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'BUZZER ON START'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'BUZZER ON STOP'
+  # Options Buzzer
+  GridLayout:
+    size_hint: None, None
+    size: root.width, root.width/10 + root.width/30
+    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    spacing: root.width/15, 0
+    cols: 2
+    SLabel:
+      id: idxbuzzeronstart
+      index: root.buzzeronstart
+    SLabel:
+      id: idxbuzzeronstop
+      index: root.buzzeronstop
+  # Titles LED Mode
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    cols: 2
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'LED ON START'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'LED ON STOP'
+  # Options LED Mode
+  GridLayout:
+    size_hint: None, None
+    size: root.width, root.width/10 + root.width/30
+    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    spacing: root.width/15, 0
+    cols: 2
+    SLabel:
+      id: idxledonstart
+      option: ["remain","all on","all off","status"]
+      index: root.ledonstart
+    SLabel:
+      id: idxledonstop
+      option: ["remain","all on","all off","status"]
+      index: root.ledonstop
+  # Titles Volume & Mode
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    cols: 2
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'BUZZER VOLUME'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'SYSTEM MODE'
+  # Options Volume & Mode
+  GridLayout:
+    size_hint: None, None
+    size: root.width, root.width/10 + root.width/30
+    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    spacing: root.width/15, 0
+    cols: 2
+    SLabel:
+      id: idxbuzzervolume
+      option: ["remain","high","low","mute"]
+      index: root.buzzervolume
+    SLabel:
+      id: idxsystemmode
+      option: ["video","photo"] #,"int.video","int.photo"]
+      index: root.systemmode
+  GridLayout:
+    size_hint: 1,1
+    padding: root.width - root.width/15 - root.width/10 - root.width/60 - root.width/7.5 * 2, self.height - root.width/15 - root.width/7.5, 0, root.width/15
+    spacing: root.width/10,0
+    cols: 2
+    Button:
+      size_hint: None, None
+      size: root.width/7.5, root.width/7.5
+      background_normal: 'ximage/apply_normal.png'
+      background_down: 'ximage/apply_down.png'
+      always_release: False
+      on_release:
+        root.scenename = idxscenename.text
+        root.autorename = idxautorename.index
+        root.moveduplicated = idxmoveduplicated.index
+        root.buzzeronstart = idxbuzzeronstart.index
+        root.buzzeronstop = idxbuzzeronstop.index
+        root.ledonstart = idxledonstart.index
+        root.ledonstop = idxledonstop.index
+        root.buzzervolume = idxbuzzervolume.index
+        root.systemmode = idxsystemmode.index
+        root.parent.parent.manager.XCfgAdvancedApply(root, True)
+    Button:
+      size_hint: None, None
+      size: root.width/7.5, root.width/7.5
+      background_normal: 'ximage/cancel_normal.png'
+      background_down: 'ximage/cancel_down.png'
+      always_release: False
+      on_release:
+        root.parent.parent.manager.XCfgAdvancedApply(root, False)
