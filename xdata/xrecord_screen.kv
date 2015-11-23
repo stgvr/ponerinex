@@ -22,7 +22,7 @@
   valign: 'top'
   halign: 'left'
 
-<RTextInput>:
+<RTextInput@TextInput>:
   color: 1,1,1,1 #0.15,0.15,0.15,1
   font_name: 'Roboto-Thin' #app.RobotoThin
   font_size: root.parent.width/10
@@ -82,7 +82,37 @@
     size_hint: 1,1
     color: 0,0,0,0
 
-<XRecordScreen>:
+<LSpinner>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.parent.width-root.parent.width/15*2)/3,(root.parent.width-root.parent.width/15*2)/3
+  background_normal: 'ximage/left_normal.png'
+  background_down: 'ximage/left_down.png'
+  background_disabled_normal: 'ximage/left_disable.png'
+
+<RecButton>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
+  #text: 'RECORD'
+  font_name: 'Roboto-Thin'
+  font_size: self.width/8.7
+  background_normal: 'ximage/circle_normal.png'
+  background_down: 'ximage/circle_down.png'
+  background_disabled_normal: 'ximage/circle_disable.png'
+
+<RSpinner>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
+  background_normal: 'ximage/right_normal.png'
+  background_down: 'ximage/right_down.png'
+  background_disabled_normal: 'ximage/right_disable.png'
+
+<XRecordScreen@Screen>:
   AnchorLayout:
     anchor_x: 'left'
     anchor_y: 'top'

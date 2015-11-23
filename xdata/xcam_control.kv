@@ -11,41 +11,13 @@
     spacing: 0, 0
     padding: root.width/15, root.width/30, root.width/15, root.width/15
     cols: 3
-    Spinner:
-      color: 1,1,1,1
-      disabled_color: 0.25,0.25,0.25,1
-      size_hint: None, None
-      size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
-      #text: '<'
-      #font_name: 'Roboto-Thin'
-      #font_size: root.width/15
+    LSpinner:
       values: ("Camera 1","Camera 2","Camera 3","Camera 4","Camera 5","Camera 6","Camera 7","Advanced")
-      background_normal: 'ximage/left_normal.png'
-      background_down: 'ximage/left_down.png'
-      background_disabled_normal: 'ximage/left_disable.png'
-    Button:
-      color: 1,1,1,1
-      disabled_color: 0.25,0.25,0.25,1
-      size_hint: None, None
-      size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
-      text: 'RECORD'
-      font_name: 'Roboto-Thin'
-      font_size: root.width/30
-      background_normal: 'ximage/circle_normal.png'
-      background_down: 'ximage/circle_down.png'
-      background_disabled_normal: 'ximage/circle_disable.png'
+      disabled: False
+    RECButton:
+      text: 'RECORD' #'%s' %self.font_size
       disabled: True
       #on_release: root.parent.parent.manager.TestColor()
-    Spinner:
-      color: 1,1,1,1
-      disabled_color: 0.25,0.25,0.25,1
-      size_hint: None, None
-      size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
-      #text: '>'
-      #font_name: 'Roboto-Thin'
-      #font_size: root.width/15
-      values: ("Option 1","Option 2","Option 3","Option 4","Option 5","Option 6","Option 7","Metering", "M.Exposure") #"Option 1","Option 2","Option 3","Option 4","Option 5","Option 6","Option 7"
-      background_normal: 'ximage/right_normal.png'
-      background_down: 'ximage/right_down.png'
-      background_disabled_normal: 'ximage/right_disable.png'
+    RSpinner:
+      values: ("Metering", "M.Exposure") #"Option 1","Option 2","Option 3","Option 4","Option 5","Option 6","Option 7"
       disabled: True

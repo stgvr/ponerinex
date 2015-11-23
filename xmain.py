@@ -44,12 +44,18 @@ Builder.load_file('xdata/xcfg_advanced.kv')
 Clock.max_iteration = 100
 __version__='0.0.5'
 
-class RLabel(Label):
-  name = StringProperty()
-  
-class RTextInput(TextInput):
+class LSpinner(Spinner):
   pass
   
+class RECButton(Button):
+  pass
+
+class RSpinner(Spinner):
+  pass
+
+class RLabel(Label):
+  name = StringProperty()
+    
 class CLabel(AnchorLayout):
   adapter = NumericProperty()
   battery = NumericProperty()
@@ -103,6 +109,7 @@ class ManualExposurePopup(Popup):
   apply = BooleanProperty()
 
 class XPonerine(ScreenManager):
+  
   def InitControls(self):
     idx_button = 0
     idx_meter = 0
@@ -114,6 +121,10 @@ class XPonerine(ScreenManager):
     self.xapptitle = XAppTitle() #LOGO
     self.xcamcontrol = XCamControl() #BUTTON
     self.xcaminfo = XCamInfo() #CAM ICONS
+    
+    self.btnredraw = self.xapptitle.children[6].children[0]
+    print 'self.btnredraw',self.btnredraw.background_normal
+    self.btnredraw.bind(on_release=self.RedrawAll)
     
     self.btnsetting = self.xcamcontrol.children[idx_button].children[2]
     self.btnsetting.bind(text=self.ConfigPopupOpen)
@@ -386,7 +397,7 @@ class XPonerine(ScreenManager):
       Window.size = (600,960) #(560,896) #(560,800) #(720,800)
       #Window.borderless = '1'
     elif sysname == "Darwin":
-      Window.size = (600,720) #(520,700)
+      Window.size = (520,700)
     elif sysname == "Linux":
       if platform.linux_distribution()[0] == "Ubuntu":
         Window.size = (560,800)
@@ -957,7 +968,8 @@ class XPonerine(ScreenManager):
         if self.linked == self.maxcam and self.maxcam > 0:
           self.btnrecord.disabled = False
           self.btnmeter.disabled = False
-          self.RefreshOption()
+          Clock.unschedule(self.RedrawMeter)
+          Clock.schedule_once(self.RedrawMeter)
         else:
           self.btnrecord.disabled = True
           self.btnmeter.disabled = True
@@ -1141,19 +1153,37 @@ class XPonerine(ScreenManager):
     else:
       self.lblcam[index].status = 'error'
   
-  def RefreshOption(self):
-    print 'RefreshOption'
+  def RedrawAll(self,*args):
+    self.RedrawRecord()
+    self.RedrawMeter()
+  
+  def RedrawRecord(self,*args):
+    new = RECButton()
+    new.text = self.btnrecord.text
+    new.disabled = self.btnrecord.disabled
+    self.btnrecord.unbind(on_release=self.Record)
+    self.xcamcontrol.children[0].remove_widget(self.btnrecord)
+    self.xcamcontrol.children[0].add_widget(new,index=1)
+    self.btnrecord = new
+    self.btnrecord.bind(on_release=self.Record)
+    
+  def RedrawMeter(self,*args):
+    new = RSpinner()
     option = []
     i = 0
     for cam in self.cam:
       i += 1
       if cam.link:
         option.append('Option %d' %i)
-
     option.append('Metering')
     option.append('M.Exposure')
-    print 'new options: %s' %option
-    self.btnmeter.values = option
+    new.values = option
+    new.disabled = self.btnmeter.disabled
+    self.btnmeter.unbind(text=self.ConfigPopupOpen)
+    self.xcamcontrol.children[0].remove_widget(self.btnmeter)
+    self.xcamcontrol.children[0].add_widget(new)
+    self.btnmeter = new
+    self.btnmeter.bind(text=self.ConfigPopupOpen)
   
   def StringFilter(self, strin):
     filter = list(string.ascii_letters + string.digits)
@@ -1194,7 +1224,8 @@ class XPonerine(ScreenManager):
       self.linked += 1
     if recstatus in ("record","recording"):
       if self.linked == self.maxcam:
-        self.RefreshOption()
+        Clock.unschedule(self.RedrawMeter)
+        Clock.schedule_once(self.RedrawMeter)
     else:
       # check resolution
       cam.CheckSetting("video_resolution")
@@ -1207,7 +1238,8 @@ class XPonerine(ScreenManager):
       if self.linked == self.maxcam:
         self.btnrecord.disabled = False
         self.btnmeter.disabled = False
-        self.RefreshOption()
+        Clock.unschedule(self.RedrawMeter)
+        Clock.schedule_once(self.RedrawMeter)
     while not cam.quit.isSet():
       cam.taken.wait(1)
       if cam.status.has_key("battery"):
