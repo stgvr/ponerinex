@@ -383,8 +383,9 @@ class XCamera():
         if len(arr) == 6:
           self.filetaken = data["param"]
           self.dirtaken = arr[4]
-        print 'video_record_complete', self.dirtaken, self.filetaken
-        print 'check %s' %data['param']
+        #print 'video_record_complete', self.dirtaken, self.filetaken
+        #print 'check %s' %data['param']
+        self.recordsec = 0
         self.SendMsg('{"msg_id":1026,"param":"%s"}' %data["param"])
         self.taken.set()
       elif data["type"] == "get_file_complete":
@@ -525,26 +526,27 @@ class XCamera():
     elif data["msg_id"] in (1,2):
       if data["msg_id"] == 2:
         self.setok.set()
-      if data.has_key("type") and data.has_key("param"):
-        st = json.loads('{"%s":"%s"}' %(data["type"],data["param"]))
-        self.cfgdict.update(st)
-        #print "msg_id",data["msg_id"],self.cfgdict
-        ifound = False
-        for item in self.settings:
-          if item.keys()[0] == st.keys()[0]:
-            item.update(st)
-            ifound = True
-            break
-        if not ifound:
-          self.settings.append(st)
-      if data["type"] == 'app_status':
-        #"options": ["idle", "vf", "record", "recording", 
-        #            "capture", "precise_cont_capturing", 
-        #            "burst_capturing", "precise_capturing", 
-        #            "operation_done"]
-        if data["param"] in ("record","recording"):
-          self.recording.set()
-          self.SendMsg('{"msg_id":515}')
+      if data.has_key("type"):
+        if data.has_key("param"):
+          st = json.loads('{"%s":"%s"}' %(data["type"],data["param"]))
+          self.cfgdict.update(st)
+          #print "msg_id",data["msg_id"],self.cfgdict
+          ifound = False
+          for item in self.settings:
+            if item.keys()[0] == st.keys()[0]:
+              item.update(st)
+              ifound = True
+              break
+          if not ifound:
+            self.settings.append(st)
+        if data["type"] == 'app_status':
+          #"options": ["idle", "vf", "record", "recording", 
+          #            "capture", "precise_cont_capturing", 
+          #            "burst_capturing", "precise_capturing", 
+          #            "operation_done"]
+          if data["param"] in ("record","recording"):
+            self.recording.set()
+            self.SendMsg('{"msg_id":515}')
     # all config information
     elif data["msg_id"] == 3:
       #self.settings = json.dumps(data["param"], indent=0).replace("{\n","{").replace("\n}","}")
@@ -631,6 +633,7 @@ class XCamera():
     elif data["msg_id"] == 1026:
       if data.has_key("media_type") and data.has_key("resolution") and data.has_key("size") and data.has_key("duration"):
         if data["resolution"] <> "320x240":
+          self.recordsec = int(data["duration"])
           bitrate = data["size"] / int(data["duration"]) / 1024
           if bitrate > 3840:
             self.bitrate = bitrate

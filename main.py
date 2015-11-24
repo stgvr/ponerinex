@@ -42,7 +42,7 @@ Builder.load_file('xdata/xcam_control.kv')
 Builder.load_file('xdata/xcfg_advanced.kv')
 
 Clock.max_iteration = 100
-__version__='0.0.5'
+__version__='0.0.6'
 
 class LSpinner(Spinner):
   pass
@@ -64,6 +64,7 @@ class CLabel(AnchorLayout):
   status = OptionProperty("disable", options=["disable","enable","on","off","link","busy","beep","error"])
 
 class SLabel(GridLayout):
+  fixcolor = BooleanProperty(False)
   index = NumericProperty()
   option = ListProperty(["disable","enable"])
   
@@ -89,6 +90,7 @@ class XCfgAdvanced(BoxLayout):
   buzzervolume = NumericProperty()
   ledonstart = NumericProperty()
   ledonstop = NumericProperty()
+  metermode = NumericProperty()
   systemmode = NumericProperty()
 
 class ConfigPopup(Popup):
@@ -168,7 +170,7 @@ class XPonerine(ScreenManager):
     self.lblframe.text = self.camframe
     self.lblbitrate.text = self.cambitrate
     self.lblaspect.text = self.camaspect
-    self.lblmetermode.text = self.cammetermode
+    self.lblmetermode.text = self.meterlist[self.cammetermode]
     self.lblexposure.text = self.camexposure
     self.lblshutter.text = self.camshutter
     self.lbliso.text = self.camiso
@@ -195,7 +197,7 @@ class XPonerine(ScreenManager):
     
     if self.inited:
       for lbl in self.lblcam:
-        lbl.bind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+        lbl.bind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera)
   
   def DrawCamera(self, *args):
     if len(args) == 0:
@@ -209,11 +211,9 @@ class XPonerine(ScreenManager):
     if i >= len(self.lblcam):
       return
     Clock.unschedule(self.DoDrawCamera)
-    #print 'DrawCamera',args[0],i
     Clock.schedule_once(partial(self.DoDrawCamera,args[0]))
   
   def DoDrawCamera(self, clabel, *args):
-    #print 'DoDrawCamera',clabel,args
     lsize = clabel.size
     lpos = clabel.pos
     lstatus = clabel.status
@@ -223,28 +223,28 @@ class XPonerine(ScreenManager):
     bidx = int(clabel.battery/2)
     apt = clabel.adapter
     #options=["disable","enable","on","link","busy","error"]
-    a=0.8
     if lstatus == "disable":
-      r=0;g=0;b=0;a=0
+      r=1;g=1;b=1;a=0.05
     elif lstatus in ("enable","beep"): #blue
-      r=0;g=0.75;b=1
+      r=0;g=0.75;b=1;a=0.8
     elif lstatus == "on": #green
-      r=0;g=1;b=0
+      r=0;g=1;b=0;a=0.8
     elif lstatus == "link": #white
-      r=1;g=1;b=1;a=0.25
+      r=1;g=1;b=1;a=0.5
     elif lstatus == "busy":
-      r=1;g=1;b=0.25
+      r=1;g=1;b=0.25;a=0.8
     elif lstatus in ("error","off"):
-      r=1;g=0;b=0
-    lbltext.color = (r,g,b,1)
+      r=1;g=0;b=0;a=0.8
+    if a >= 0.5:
+      lbltext.color = (r,g,b,0.8)
+    else:
+      lbltext.color = (r,g,b,a)
     imgcanvas.canvas.clear()
-    if lstatus == "disable":
-      return
     #draw status circle
     with imgcanvas.canvas:
       Color(r,g,b,a)
       Rectangle(size=lsize,pos=lpos,source='ximage/camstatus.png')
-    if lstatus in ("enable","on","off"):
+    if lstatus in ("disable","enable","on","off"):
       return
     
     #draw memory circle
@@ -322,7 +322,7 @@ class XPonerine(ScreenManager):
     if len(args) == 0:
       return
     lbl = args[0]
-    print 'LabelText',lbl.name,args
+    #print 'LabelText',lbl.name,args
     if lbl.name == 'scenename':
       self.camscenename = lbl.text
     elif lbl.name == 'sceneshot':
@@ -340,7 +340,11 @@ class XPonerine(ScreenManager):
     elif lbl.name == 'aspect':
       self.camaspect = lbl.text
     elif lbl.name == 'metermode':
-      self.cammetermode = lbl.text
+      i = 0
+      for m in self.meterlist:
+        if m == lbl.text:
+          self.cammetermode = i
+        i += 1
     elif lbl.name == 'exposure':
       self.camexposure = lbl.text
     elif lbl.name == 'shutter':
@@ -374,7 +378,8 @@ class XPonerine(ScreenManager):
     self.camframe = ''#'60P'
     self.cambitrate = ''#'35M'
     self.camaspect = ''#'4:3'
-    self.cammetermode = ''#'average'
+    self.meterlist = ['average','center','spot']
+    self.cammetermode = 0#'average'
     self.camexposure = ''#'auto'
     self.camshutter = ''#'1/60s'
     self.camiso = ''#'800'
@@ -388,7 +393,6 @@ class XPonerine(ScreenManager):
     self.maxcam = 0
     
     self.cfglist = self.ReadConfig()
-    self.stopdetect = threading.Event()
     self.recordstart = threading.Event()
     self.recordstop = threading.Event()
     
@@ -417,10 +421,10 @@ class XPonerine(ScreenManager):
         cam.ip = self.cfglist[i]["ip"]
         cam.preview = self.cfglist[i]["preview"] == 1
         self.maxcam += 1
-        self.lblcam[i].status = 'enable'
-        threading.Thread(target=self.DoDetectCam, name="%sDoDetectCam" %cam.ip, args=(i,)).start()
+        self.lblcam[i].status = 'enable'        
       else:
         self.lblcam[i].status = 'disable'
+      threading.Thread(target=self.DoDetectCam, name="%sDoDetectCam" %cam.ip, args=(i,)).start()
       self.cam.append(cam)
       self.renlist.append({})
       
@@ -431,14 +435,16 @@ class XPonerine(ScreenManager):
   def DoDetectCam(self, index):
     while self.quitcam[index].isSet():
       pass
-    print 'Start DoDetectCam %d' %index
+    print 'Start DoDetectCam %d %s' %(index,self.lblcam[index].status)
     bind = False
     # slow down detect for first time
     while self.inited == False:
       bind = True
       time.sleep(1)
     self.DrawCamera(self.lblcam[index])
-    self.lblcam[index].bind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera) #,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+    self.lblcam[index].bind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera)
+    if self.lblcam[index].status == "disable":
+      return
     port = [7878, 8787, 554, 23]
     # while True:
       # if self.cam[index].enabled:
@@ -523,16 +529,14 @@ class XPonerine(ScreenManager):
       t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()+ index * 10))
       print "time offset: %s" %t
       cam.ChangeSetting("camera_clock", t)
-      setok.wait(10)
+      setok.wait(5)
       cam.msgbusy = 0
       #check preview
       cam.CheckSetting("preview_status")
       #check led mod
       cam.CheckSetting("led_mode")
       #set meter mode
-      cam.ChangeSetting("meter_mode",self.cammetermode)
-      setok.wait(10)
-      cam.msgbusy = 0
+      cam.CheckSetting("meter_mode")
       # set buzzer volume
       if self.buzzervolume != 0:
         opt = ['remain','high','low','mute']
@@ -547,36 +551,48 @@ class XPonerine(ScreenManager):
         if cam.cfgdict.has_key("buzzer_volume"):
           if cam.cfgdict["buzzer_volume"] <> opt[self.buzzervolume]:
             cam.ChangeSetting("buzzer_volume",opt[self.buzzervolume])
-            setok.wait(10)
+            setok.wait(5)
             cam.msgbusy = 0
         else:
           cam.ChangeSetting("buzzer_volume",opt[self.buzzervolume])
-          setok.wait(10)
+          setok.wait(5)
           cam.msgbusy = 0
       if cam.cfgdict.has_key("preview_status"):
+        #print 'cam.cfgdict.has_key("preview_status")'
         if cam.preview:
           if cam.cfgdict["preview_status"] == "off":
             cam.ChangeSetting("preview_status","on")
-            setok.wait(10)
+            setok.wait(5)
             cam.msgbusy = 0
           cam.StartViewfinder()
         else:
           if cam.cfgdict["preview_status"] == "on":
-            cam.ChangeSetting("preview_status","off")
-            setok.wait(10)
-            cam.msgbusy = 0
             cam.StopViewfinder()
+            cam.ChangeSetting("preview_status","off")
+            setok.wait(5)
+            cam.msgbusy = 0
       else:
+        #print 'cam.cfgdict.has_no_key("preview_status")'
         if cam.preview:
+          cam.StopViewfinder()
           cam.ChangeSetting("preview_status","on")
-          setok.wait(10)
+          setok.wait(5)
           cam.msgbusy = 0
           cam.StartViewfinder()
         else:
-          cam.ChangeSetting("preview_status","off")
-          setok.wait(10)
-          cam.msgbusy = 0
           cam.StopViewfinder()
+          cam.ChangeSetting("preview_status","off")
+          setok.wait(5)
+          cam.msgbusy = 0
+      if cam.cfgdict.has_key("meter_mode"):
+        if cam.cfgdict["meter_mode"] != self.meterlist[self.cammetermode]:
+          cam.ChangeSetting("meter_mode",self.meterlist[self.cammetermode])
+          setok.wait(5)
+          cam.msgbusy = 0
+      else:
+        cam.ChangeSetting("meter_mode",self.meterlist[self.cammetermode])
+        setok.wait(5)
+        cam.msgbusy = 0
     self.lblcam[index].battery = 0
     self.lblcam[index].memory = 0
     self.lblcam[index].adapter = 0
@@ -625,10 +641,12 @@ class XPonerine(ScreenManager):
     while not cam.quit.isSet():
       if recstatus in ("record","recording"):
         self.lblcam[index].status = 'busy'
+        recstatus = ""
         if self.recstart == 0:
+          recstatus = "record"
           self.firstcam = index
         self.recstart += 1
-        threading.Thread(target=self.DoStopRecord, args=(index,), name="DoStopRecord%d" %index).start()
+        threading.Thread(target=self.DoStopRecord, args=(index,recstatus,), name="DoStopRecord%d" %index).start()
         recstatus = ""
         if self.recstart == self.reccam:
           while self.linked < self.maxcam:
@@ -701,7 +719,7 @@ class XPonerine(ScreenManager):
     else:
       self.lblstatus.color = (1,0,0,1)
     
-  def DoStopRecord(self, index):
+  def DoStopRecord(self, index, recstatus=""):
     if self.moveduplicated == 1:
       threading.Thread(target=self.RenameDuplicated, args=(index,),name="RenameDuplicated%d" %index).start()
     self.recordstop.wait()
@@ -713,19 +731,23 @@ class XPonerine(ScreenManager):
       #if self.buzzeronstop:
       #  cam.msgbusy = 0
       cam.StopRecord()
-    print "DoStopRecord", index
-    print cam.filetaken
+    #print "DoStopRecord", index
+    #print cam.filetaken
     # stopfirst = self.recstart
     # if stopfirst == 0: #show last record time
       # self.firstcam = index
+    if recstatus in ("record","recording"):
+      self.ftaken += (self.maxcam - self.reccam)
+      self.recstart += (self.maxcam - self.reccam)
+      self.rename += (self.maxcam - self.reccam)
     self.recstart += 1
     if self.recstart == self.maxcam:
       self.trec = time.time()
       Clock.schedule_interval(self.FlashTimeOn, 0.5)
       self.recordstop.clear()
       self.lblstatus.text = ''
-      self.btnsetting.disabled = False
-      self.btnmeter.disabled = False
+      #self.btnsetting.disabled = False
+      #self.btnmeter.disabled = False
     self.lblcam[index].status = "link"
     
   def FlashTimeOn(self, *args):
@@ -857,6 +879,7 @@ class XPonerine(ScreenManager):
         popup.ledonstart = self.ledonstart
         popup.ledonstop = self.ledonstop
         popup.buzzervolume = self.buzzervolume
+        popup.metermode = self.cammetermode
         popup.systemmode = self.systemmode
         wg_advanced = self.get_screen('advanced').children[0]
         wg_advanced.clear_widgets()
@@ -872,14 +895,15 @@ class XPonerine(ScreenManager):
         #self.switch_to(self.screen[1])
       else: #camera ip setting
         index = int(text.split(" ")[1]) - 1
-        self.stopdetect.set()
+        if self.cam[index].link:
+          self.cam[index].CheckSetting("preview_status")
         camcfg = {}
         camcfg["camera"] = self.cfglist[index]["camera"]
         camcfg["ip"] = self.cfglist[index]["ip"]
         camcfg["name"] = self.cfglist[index]["name"]
         camcfg["enabled"] = self.cfglist[index]["enabled"]
         camcfg["preview"] = self.cfglist[index]["preview"]
-        popup = ConfigPopup(title='Camera Connection Config', size_hint=(0.8, 0.6), size=self.size, cfg=camcfg, index=index)
+        popup = ConfigPopup(title='Camera %d Config' %(index+1), size_hint=(0.8, 0.6), size=self.size, cfg=camcfg, index=index)
         popup.bind(on_dismiss=self.ConfigPopupApply)
         popup.apply = False
         popup.index = index
@@ -898,7 +922,7 @@ class XPonerine(ScreenManager):
         pass
       else: #camera option setting
         index = int(text.split(" ")[1]) - 1
-        popup = CameraSettingPopup(title='Camera Options', size_hint=(0.8, 0.8), size=self.size, asid=self.cam[index].asid, index=index)
+        popup = CameraSettingPopup(title='Camera %d Options' %(index+1), size_hint=(0.8, 0.8), size=self.size, asid=self.cam[index].asid, index=index)
         popup.bind(on_dismiss=self.CameraSettingPopupApply)
         popup.apply = False
         popup.index = index
@@ -928,6 +952,14 @@ class XPonerine(ScreenManager):
               cam.ChangeSetting("buzzer_volume", opt[self.buzzervolume])
       self.ledonstart = popup.ledonstart
       self.ledonstop = popup.ledonstop
+      self.lblmetermode.text = self.meterlist[popup.metermode]
+      for cam in self.cam:
+        if cam.link:
+          if cam.cfgdict.has_key('meter_mode'):
+            if cam.cfgdict['meter_mode'] != self.meterlist[popup.metermode]:
+              cam.ChangeSetting("meter_mode", self.meterlist[popup.metermode])
+          else:
+            cam.ChangeSetting("meter_mode", self.meterlist[popup.metermode])
       self.systemmode = popup.systemmode
       if self.systemmode == 0:
         self.btnrecord.text = 'RECORD'
@@ -960,7 +992,7 @@ class XPonerine(ScreenManager):
             self.quitcam[index].set()
             break
         self.lblcam[index].status = 'disable'
-        self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+        #self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
        
         if cam.link:
           threading.Thread(target=self.DoDisconnect, args = (index,),name="DoDisconnect%d" %index).start()
@@ -988,8 +1020,12 @@ class XPonerine(ScreenManager):
   
   def DoSetPreview(self, index, preview):
     cam = self.cam[index]
+    if cam.cfgdict.has_key("preview_status"):
+      oldpreview = cam.cfgdict["preview_status"]
+    else:
+      oldpreview = ""
     setok = cam.setok
-    if preview == 0:
+    if preview == 0 and oldpreview != "off": #off
       cam.StopViewfinder()
       i = 0
       while cam.vfstart:
@@ -1001,12 +1037,21 @@ class XPonerine(ScreenManager):
       cam.ChangeSetting("preview_status","off")
       setok.wait(10)
       cam.msgbusy = 0
-    else:
+      time.sleep(1)
+    elif preview == 1 and oldpreview != "on": #on
+      cam.StopViewfinder()
+      i = 0
+      while cam.vfstart:
+        if i >= 20:
+          return
+        time.sleep(0.5)
+        i += 1
+        pass
       cam.ChangeSetting("preview_status","on")
       setok.wait(10)
       cam.msgbusy = 0
       cam.StartViewfinder()
-    time.sleep(1)
+      time.sleep(1)
     self.lblcam[index].status = 'link'        
         
   def ManualExposurePopupApply(self, popup):
@@ -1102,7 +1147,7 @@ class XPonerine(ScreenManager):
     ip = self.cam[index].ip
     self.linked -= 1
     self.lblcam[index].status = 'disable'
-    self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+    #self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
     self.btnrecord.disabled = True
     self.btnmeter.disabled = True
     self.DoDisconnect(index)
@@ -1131,7 +1176,7 @@ class XPonerine(ScreenManager):
     ip = self.cam[index].ip
     self.linked -= 1
     self.lblcam[index].status = 'disable'
-    self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+    #self.lblcam[index].unbind(size=self.DrawCamera,pos=self.DrawCamera,status=self.DrawCamera,battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
     self.btnrecord.disabled = True
     self.btnmeter.disabled = True
     self.DoDisconnect(index)
@@ -1154,8 +1199,11 @@ class XPonerine(ScreenManager):
       self.lblcam[index].status = 'error'
   
   def RedrawAll(self,*args):
+    print "RedrawAll(self,*args)"
     self.RedrawRecord()
     self.RedrawMeter()
+    for lbl in self.lblcam:
+      self.DrawCamera(lbl)
   
   def RedrawRecord(self,*args):
     new = RECButton()
@@ -1222,38 +1270,34 @@ class XPonerine(ScreenManager):
     midx = 0
     if cam.token <> 0:
       self.linked += 1
-    if recstatus in ("record","recording"):
-      if self.linked == self.maxcam:
-        Clock.unschedule(self.RedrawMeter)
-        Clock.schedule_once(self.RedrawMeter)
-    else:
+    # check card usage
+    cam.CardUsage()
+    # check battery
+    cam.CheckBatteryState()
+    if self.linked == self.maxcam:
+      Clock.unschedule(self.RedrawMeter)
+      Clock.schedule_once(self.RedrawMeter)
+    if recstatus not in ("record","recording"):
       # check resolution
       cam.CheckSetting("video_resolution")
-      # check battery
-      cam.CheckBatteryState()
-      # check card usage
-      cam.CardUsage()
-      
-      midx = self.lblcam[index].memory
       if self.linked == self.maxcam:
         self.btnrecord.disabled = False
         self.btnmeter.disabled = False
-        Clock.unschedule(self.RedrawMeter)
-        Clock.schedule_once(self.RedrawMeter)
+    midx = self.lblcam[index].memory
     while not cam.quit.isSet():
       cam.taken.wait(1)
       if cam.status.has_key("battery"):
         if self.lblcam[index].battery <> int(cam.status["battery"]):
           self.lblcam[index].battery = int(cam.status["battery"])
-          print 'battery %d' %self.lblcam[index].battery
+          #print 'battery %d' %self.lblcam[index].battery
       if cam.status.has_key("adapter_status"):
         if self.lblcam[index].adapter <> int(cam.status["adapter_status"]):
           self.lblcam[index].adapter = int(cam.status["adapter_status"])
-          print 'adapter %d' %self.lblcam[index].adapter
+          #print 'adapter %d' %self.lblcam[index].adapter
       if midx <> cam.memory:
         midx = cam.memory
         self.lblcam[index].memory = cam.memory
-        print 'memory %d' %self.lblcam[index].memory
+        #print 'memory %d' %self.lblcam[index].memory
       if cam.taken.isSet():
         if self.systemmode == 0: #video
           if self.ledonstop != 0:
@@ -1277,11 +1321,29 @@ class XPonerine(ScreenManager):
             self.renlist[index]=dict(fileinfo)
             if self.autorename == 1:
               threading.Thread(target=self.RenameVideoFiles, args=(index,), name="RenameVideoFiles%d" %index).start()
-            else:
-              self.lblrecordtime.text = ''
+            #else:
+              #self.lblrecordtime.text = ''
           self.ftaken += 1
+          # update record time, use the minimum seconds to display
+          if self.ftaken == 1: #first cam
+            t = time.time()
+            while cam.recordsec == 0:
+              if time.time() - t > 2.0: #wait 2 seconds for timeout
+                break
+            if cam.recordsec != 0:
+              self.lblrecordtime.text = self.Second2Time(cam.recordsec)
+          else: #other cam
+            t = time.time()
+            while cam.recordsec == 0:
+              if time.time() - t > 2.0: #wait 2 seconds for timeout
+                break
+            if cam.recordsec != 0 and self.lblrecordtime.text > self.Second2Time(cam.recordsec):
+              self.lblrecordtime.text = self.Second2Time(cam.recordsec)
           if self.ftaken == self.maxcam and self.autorename == 0:
             self.FlashTimeOff()
+            self.btnsetting.disabled = False
+            self.btnrecord.disabled = False
+            self.btnmeter.disabled = False
         elif self.systemmode == 1: #photo
           print 'do taken %d' %index, cam.filetaken
           if cam.filetaken <> "":
@@ -1299,15 +1361,17 @@ class XPonerine(ScreenManager):
   def RenameVideoFiles(self, index):
     self.lblcam[index].status = "busy"
     cam = self.cam[index]
-    date = time.strftime('%Y%m%d')
     camletter = list(string.ascii_lowercase)
+    camname = self.cfglist[index]["name"]
+    if camname == '':
+      camname = camletter[index]
+    date = time.strftime('%Y%m%d')
+    
     failure = False
     old = cam.status["video_record_complete"]
-    #cam.SendMsg('{"msg_id":1026,"param":"%s"}' %old.replace('.mp4','.THM')) 
-    print "old file name:", old
-    #new = '/tmp/fuse_d/DCIM/%s/%s-%s-%s-%03d.mp4' %(self.camscenename,date,self.camscenename,camletter[index],self.camsceneshot)
-    new = '/tmp/fuse_d/DCIM/%s/%s-%s-%02d%s.mp4' %(self.camscenename,date,self.camscenename,self.camsceneshot,camletter[index])
-    print "new file name:", new
+    #print "old file name:", old
+    new = '/tmp/fuse_d/DCIM/%s/%s-%s-%02d-%s.mp4' %(self.camscenename,date,self.camscenename,self.camsceneshot,camname)
+    #print "new file name:", new
     fileinfo = dict(self.renlist[index])
     fileinfo["new"] = new
     ctelnet = XCameraTelnet(ip=cam.ip,username="")
@@ -1345,21 +1409,29 @@ class XPonerine(ScreenManager):
       else:       
         self.lblsceneshot.text = '%02d' %(self.camsceneshot + 1)
         self.WriteConfig()
-        print 'do FlashShotOn'
+        #print 'do FlashShotOn'
         Clock.schedule_interval(self.FlashShotOn, 0.5)
-        print 'after FlashShotOn'
+        #print 'after FlashShotOn'
         threading.Thread(target=self.FlashShotOff, name="FlashShotOff").start()
-  
+      self.btnsetting.disabled = False
+      self.btnrecord.disabled = False
+      self.btnmeter.disabled = False
+      
   def RenameDuplicated(self, index):
-    time.sleep(3)
+    if self.buzzeronstart == 0:
+      time.sleep(3)
+    else:
+      time.sleep(8)
     cam = self.cam[index]
-    date = time.strftime('%Y%m%d')
     camletter = list(string.ascii_lowercase)
+    camname = self.cfglist[index]["name"]
+    if camname == '':
+      camname = camletter[index]
+    date = time.strftime('%Y%m%d')
     failure = False
-    #new = '/tmp/fuse_d/DCIM/%s/%s-%s-%02d%s.mp4' %(self.camscenename,date,self.camscenename,camletter[index],self.camsceneshot)
-    new = '/tmp/fuse_d/DCIM/%s/%s-%s-%02d%s.mp4' %(self.camscenename,date,self.camscenename,self.camsceneshot,camletter[index])
+    new = '/tmp/fuse_d/DCIM/%s/%s-%s-%02d-%s.mp4' %(self.camscenename,date,self.camscenename,self.camsceneshot,camname)
     stime = time.strftime('%H%M%S')
-    duplicated = '/tmp/fuse_d/trashbin/%s-%s-%s-%02d%s.mp4' %(date,stime,self.camscenename,self.camsceneshot,camletter[index])
+    duplicated = '/tmp/fuse_d/trashbin/%s-%s-%s-%02d-%s.mp4' %(date,stime,self.camscenename,self.camsceneshot,camname)
     ctelnet = XCameraTelnet(ip=cam.ip,username="")
     ctelnet.Rename(new, duplicated)
   
@@ -1371,9 +1443,8 @@ class XPonerine(ScreenManager):
     self.lblsceneshot.color = (1,1,1,1)
   
   def FlashShotOn(self, *args):
-    
     isec = int((time.time() - self.trec) / 0.5) #refresh 0.5 seconds
-    print "FlashShotOn args %s" %args
+    #print "FlashShotOn args %s" %args
     if isec % 2 == 0:
       self.lblsceneshot.color = (0,0,0,1)
     else:
@@ -1459,9 +1530,9 @@ class XPonerine(ScreenManager):
       else:
         self.camaspect = "4:3"
       if cfg.has_key("meter"):
-        self.cammetermode = cfg["meter"]
+        self.cammetermode = int(cfg["meter"])
       else:
-        self.cammetermode = "average"
+        self.cammetermode = 0
       if cfg.has_key("exposure"):
         self.camexposure = cfg["exposure"]
       else:
@@ -1502,7 +1573,7 @@ class XPonerine(ScreenManager):
       self.camframe = '60P'
       self.cambitrate = '35M'
       self.camaspect = '4:3'
-      self.cammetermode = 'average'
+      self.cammetermode = 0
       self.camexposure = 'auto'
       self.camshutter = 'auto'
       self.camiso = 'auto'
@@ -1527,7 +1598,7 @@ class XPonerine(ScreenManager):
     cfg["framerate"] = self.camframe 
     cfg["bitrate"] = self.cambitrate
     cfg["aspect"] = self.camaspect
-    cfg["meter"] = self.cammetermode
+    cfg["meter"] = int(self.cammetermode)
     cfg["exposure"] = 'auto' # self.camexposure
     cfg["shutterspeed"] = 'auto' #self.camshutter
     cfg["iso"] = 'auto' #self.camiso

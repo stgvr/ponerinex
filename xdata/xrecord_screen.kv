@@ -39,26 +39,28 @@
   size: (root.parent.width-root.parent.width/15*2)/2 - root.parent.width/30, root.parent.width/10 #+ root.width/60
   cols: 3
   Button:
-    #color: (1,1,1,0.5)
+    #color: (1,1,1,1)
+    #text: '%s' %self.size
     size_hint: None, None
-    size: root.parent.width/10, root.parent.width/10
+    #size: root.parent.width/10, root.parent.width/10
+    size: root.parent.width/15, root.parent.width/10
     background_normal: 'ximage/lcfg_normal.png'
     background_down: 'ximage/lcfg_down.png'
     always_release: False
     on_release: root.index = (root.index - 1) % len(root.option)
   Label:
-    color: (0.25,0.25,0.25,1) if root.index == 0 else (1,1,1,1)
+    color: (0.25,0.25,0.25,1) if (root.index == 0 and root.fixcolor == False) else (1,1,1,1)
     size_hint: 1,1
     font_name: 'Roboto-Thin' #app.RobotoThin
     text_size: self.size
     valign: 'middle'
     halign: 'center'
-    font_size: root.parent.width/22
+    font_size: root.parent.width/20
     text: root.option[root.index]
   Button:
     #color: (1,1,1,0.5)
     size_hint: None, None
-    size: root.parent.width/10, root.parent.width/10
+    size: root.parent.width/15, root.parent.width/10
     background_normal: 'ximage/rcfg_normal.png'
     background_down: 'ximage/rcfg_down.png'
     always_release: False
@@ -77,7 +79,7 @@
     valign: 'middle'
     halign: 'center'
     font_size: root.parent.width/25
-    font_name: 'Roboto-Thin'
+    font_name: 'DroidSans' #'Roboto-Thin'
   Image:
     size_hint: 1,1
     color: 0,0,0,0

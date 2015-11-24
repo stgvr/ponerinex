@@ -107,8 +107,8 @@
   # Options Auto Rename & Duplicated
   GridLayout:
     size_hint: None, None
-    size: root.width, root.width/10 + root.width/30
-    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    size: root.width, root.width/10
+    padding: root.width/15,0,root.width/15,0
     spacing: root.width/15, 0
     cols: 2
     SLabel:
@@ -146,8 +146,8 @@
   # Options Buzzer
   GridLayout:
     size_hint: None, None
-    size: root.width, root.width/10 + root.width/30
-    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    size: root.width, root.width/10
+    padding: root.width/15,0,root.width/15,0
     spacing: root.width/15, 0
     cols: 2
     SLabel:
@@ -182,17 +182,17 @@
   # Options LED Mode
   GridLayout:
     size_hint: None, None
-    size: root.width, root.width/10 + root.width/30
-    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    size: root.width, root.width/10
+    padding: root.width/15,0,root.width/15,0
     spacing: root.width/15, 0
     cols: 2
     SLabel:
       id: idxledonstart
-      option: ["remain","all on","all off","status"]
+      option: ["default","all on","all off","status"]
       index: root.ledonstart
     SLabel:
       id: idxledonstop
-      option: ["remain","all on","all off","status"]
+      option: ["default","all on","all off","status"]
       index: root.ledonstop
   # Titles Volume & Mode
   GridLayout:
@@ -216,30 +216,66 @@
       color: (1,1,1,1)
       size_hint: None, None
       size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
-      text: 'SYSTEM MODE'
+      text: 'METER MODE'
   # Options Volume & Mode
   GridLayout:
     size_hint: None, None
-    size: root.width, root.width/10 + root.width/30
-    padding: root.width/15,root.width/60,root.width/15,root.width/60
+    size: root.width, root.width/10
+    padding: root.width/15,0,root.width/15,0
     spacing: root.width/15, 0
     cols: 2
     SLabel:
       id: idxbuzzervolume
-      option: ["remain","high","low","mute"]
+      option: ["default","high","low","mute"]
       index: root.buzzervolume
     SLabel:
+      id: idxmetermode
+      fixcolor: True
+      option: ["average","center","spot"] #,"int.video","int.photo"]
+      index: root.metermode
+  # Titles System Mode
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    cols: 2
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+      text: 'SYSTEM MODE'
+    Label:
+      size_hint: None, None
+      size: (root.width-root.width/15*2)/2 - root.width/30, root.width/37
+  # Options Volume & Mode
+  GridLayout:
+    size_hint: None, None
+    size: root.width, root.width/10
+    padding: root.width/15,0,root.width/15,0
+    spacing: root.width/15, 0
+    cols: 2
+    SLabel:
       id: idxsystemmode
+      fixcolor: True
       option: ["video","photo"] #,"int.video","int.photo"]
       index: root.systemmode
+    Label:
+      color: (0,0,0,0)
   GridLayout:
     size_hint: 1,1
-    padding: root.width - root.width/15 - root.width/10 - root.width/60 - root.width/7.5 * 2, self.height - root.width/15 - root.width/7.5, 0, root.width/15
-    spacing: root.width/10,0
+    padding: root.width - root.width/15 - root.width/10 - root.width/60 - root.width/10 * 2, self.height - root.width/10 * 2, 0, root.width/15
+    spacing: root.width/10, 0
     cols: 2
     Button:
       size_hint: None, None
-      size: root.width/7.5, root.width/7.5
+      size: root.width/10, root.width/10
       background_normal: 'ximage/apply_normal.png'
       background_down: 'ximage/apply_down.png'
       always_release: False
@@ -252,11 +288,12 @@
         root.ledonstart = idxledonstart.index
         root.ledonstop = idxledonstop.index
         root.buzzervolume = idxbuzzervolume.index
+        root.metermode = idxmetermode.index
         root.systemmode = idxsystemmode.index
         root.parent.parent.manager.XCfgAdvancedApply(root, True)
     Button:
       size_hint: None, None
-      size: root.width/7.5, root.width/7.5
+      size: root.width/10, root.width/10
       background_normal: 'ximage/cancel_normal.png'
       background_down: 'ximage/cancel_down.png'
       always_release: False
