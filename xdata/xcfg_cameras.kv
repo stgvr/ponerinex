@@ -1,0 +1,309 @@
+#:kivy 1.9.0
+#:import kivy kivy
+#:import Factory kivy.factory.Factory
+
+<XCfgCameras>:
+  orientation: 'vertical'
+  canvas:
+    Color: 
+      rgba: 0,0,0,1
+    Rectangle:
+      size: self.size
+      pos: self.pos
+  # Program Title
+  BoxLayout:
+    orientation: 'horizontal'
+    canvas:
+      Color: 
+        rgba: 0.95,0.95,0.95,1
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, root.width/15 + root.width/20
+    padding: root.width/30, root.width/40, root.width/30, root.width/40
+    spacing: root.width/40
+    RLabel:
+      text_size: self.size
+      size_hint: 1, None
+      #padding_x: root.width/30
+      height: root.width/15
+      halign: 'left'
+      valign: 'middle'
+      color: 0,0,0,1
+      font_size: root.width/22
+      text: ' Camera Config'
+    RLabel:
+      text_size: self.size
+      size_hint: 1, None
+      #padding_x: root.width/30
+      height: root.width/15
+      halign: 'right'
+      valign: 'middle'
+      color: 0,0,0,0.4
+      font_size: root.width/22
+      text: 'Advanced Setting '
+  AnchorLayout:
+    anchor_x: 'left'
+    anchor_y: 'top'
+    size_hint: None, None
+    size: root.width, (root.width/30+root.width/37*2+root.width/12+root.width/50+root.width/30)
+    # Scene Name & Shot Title
+    GridLayout:
+      size_hint: None, None
+      size: root.width, (root.width/30+root.width/37+root.width/10)
+      spacing: root.width/30, 0
+      padding: root.width/15, root.width/30, 0, 0 #, root.width/12, 0
+      cols: 1
+      DLabel:
+        color: (1,1,1,1)
+        size_hint: None, None
+        size: root.width/5*4-root.width/15-root.width/60, root.width/37
+        text: 'NETWORK SEGMENT'# %d %d %d %d' %(root.width,self.width,root.width/15,root.width/30)
+    # Scene & Shot
+    GridLayout:
+      canvas:
+        Color: 
+          rgba: 1,1,1,0
+        Rectangle:
+          size: self.size
+          pos: self.pos
+      size_hint: None, None
+      size: root.width, (root.width/30+root.width/37*2+root.width/12+root.width/50)
+      #spacing: root.width/50, 0
+      padding: root.width/15, root.width/30+root.width/37*2, 0, 0 #, root.width/12, 0
+      cols: 1
+      IPTextInput:
+        id: idxnetwork
+        #font_size: root.width/12
+        size_hint: None, None
+        size: root.width/4*3, root.width/12+root.width/50
+        text: root.network
+  # Camera Titles
+  GridLayout:
+    canvas:
+      Color: 
+        rgba: 1,1,1,0
+      Rectangle:
+        size: self.size
+        pos: self.pos
+    size_hint: None, None
+    size: root.width, root.width/30+root.width/100#(root.width/30+root.width/37)+root.width/60
+    spacing: root.width/15, 0 #root.width/100
+    #padding: root.width/15, root.width/30, 0, root.width/60 #, root.width/12, 0
+    padding: root.width/15, 0, root.width/15, 0 #, root.width/12, 0
+    cols: 4
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width - root.width/15*5)/4, root.width/30
+      text: 'CAMERA' #%((root.width - root.width/15*5)/4)
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width - root.width/15*5)/4, root.width/30
+      text: 'NAME'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width - root.width/15*5)/4, root.width/30
+      text: 'PREVIEW'
+    DLabel:
+      color: (1,1,1,1)
+      size_hint: None, None
+      size: (root.width - root.width/15*5)/4, root.width/30
+      text: 'IP ADDRESS'
+  BoxLayout:
+    orientation: 'vertical'
+    size_hint: 1, None
+    height: (root.width-root.width/15*2)/7*7
+    padding: root.width/15, 0, root.width/15, 0
+    CStatus:
+      id: idxcamera1
+      enabled: 0 if root.cfg == None else root.cfg[0]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[0]["camera"]
+      name: '' if root.cfg == None else root.cfg[0]["name"]
+      preview: 0 if root.cfg == None else root.cfg[0]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[0]["ip"]
+    CStatus:
+      id: idxcamera2
+      enabled: 0 if root.cfg == None else root.cfg[1]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[1]["camera"]
+      name: '' if root.cfg == None else root.cfg[1]["name"]
+      preview: 0 if root.cfg == None else root.cfg[1]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[1]["ip"]
+    CStatus:
+      id: idxcamera3
+      enabled: 0 if root.cfg == None else root.cfg[2]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[2]["camera"]
+      name: '' if root.cfg == None else root.cfg[2]["name"]
+      preview: 0 if root.cfg == None else root.cfg[2]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[2]["ip"]
+    CStatus:
+      id: idxcamera4
+      enabled: 0 if root.cfg == None else root.cfg[3]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[3]["camera"]
+      name: '' if root.cfg == None else root.cfg[3]["name"]
+      preview: 0 if root.cfg == None else root.cfg[3]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[3]["ip"]
+    CStatus:
+      id: idxcamera5
+      enabled: 0 if root.cfg == None else root.cfg[4]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[4]["camera"]
+      name: '' if root.cfg == None else root.cfg[4]["name"]
+      preview: 0 if root.cfg == None else root.cfg[4]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[4]["ip"]
+    CStatus:
+      id: idxcamera6
+      enabled: 0 if root.cfg == None else root.cfg[5]["enabled"]
+      number: int(0 if root.cfg == None else root.cfg[5]["camera"])
+      name: '' if root.cfg == None else root.cfg[5]["name"]
+      preview: 0 if root.cfg == None else root.cfg[5]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[5]["ip"]
+    CStatus:
+      id: idxcamera7
+      enabled: 0 if root.cfg == None else root.cfg[6]["enabled"]
+      number: 0 if root.cfg == None else root.cfg[6]["camera"]
+      name: '' if root.cfg == None else root.cfg[6]["name"]
+      preview: 0 if root.cfg == None else root.cfg[6]["preview"]
+      ipaddress: '' if root.cfg == None else root.cfg[6]["ip"]
+  GridLayout:
+    size_hint: 1,1
+    padding: (root.width - root.width/10*3 - root.width/8*2)/2, self.height - root.width/10 * 2, (root.width - root.width/10*5)/2, root.width/15
+    spacing: root.width/8, 0
+    cols: 3
+    Button:
+      size_hint: None, None
+      size: root.width/10, root.width/10
+      background_normal: 'ximage/rscrn_normal.png'
+      background_down: 'ximage/rscrn_down.png'
+      always_release: False
+      on_release:
+        root.network = idxnetwork.text
+        
+        root.cfg[0]["enabled"] = idxcamera1.enabled
+        root.cfg[0]["name"] = idxcamera1.name
+        root.cfg[0]["preview"] = idxcamera1.preview
+        root.cfg[0]["ip"] = idxcamera1.ipaddress
+
+        root.cfg[1]["enabled"] = idxcamera2.enabled
+        root.cfg[1]["name"] = idxcamera2.name
+        root.cfg[1]["preview"] = idxcamera2.preview
+        root.cfg[1]["ip"] = idxcamera2.ipaddress
+        
+        root.cfg[2]["enabled"] = idxcamera3.enabled
+        root.cfg[2]["name"] = idxcamera3.name
+        root.cfg[2]["preview"] = idxcamera3.preview
+        root.cfg[2]["ip"] = idxcamera3.ipaddress
+        
+        root.cfg[3]["enabled"] = idxcamera4.enabled
+        root.cfg[3]["name"] = idxcamera4.name
+        root.cfg[3]["preview"] = idxcamera4.preview
+        root.cfg[3]["ip"] = idxcamera4.ipaddress
+        
+        root.cfg[4]["enabled"] = idxcamera5.enabled
+        root.cfg[4]["name"] = idxcamera5.name
+        root.cfg[4]["preview"] = idxcamera5.preview
+        root.cfg[4]["ip"] = idxcamera5.ipaddress
+        
+        root.cfg[5]["enabled"] = idxcamera6.enabled
+        root.cfg[5]["name"] = idxcamera6.name
+        root.cfg[5]["preview"] = idxcamera6.preview
+        root.cfg[5]["ip"] = idxcamera6.ipaddress
+        
+        root.cfg[6]["enabled"] = idxcamera7.enabled
+        root.cfg[6]["name"] = idxcamera7.name
+        root.cfg[6]["preview"] = idxcamera7.preview
+        root.cfg[6]["ip"] = idxcamera7.ipaddress
+        root.parent.parent.manager.XCfgAdvancedOpen('left')
+    Button:
+      size_hint: None, None
+      size: root.width/10, root.width/10
+      background_normal: 'ximage/apply_normal.png'
+      background_down: 'ximage/apply_down.png'
+      always_release: False
+      #apply
+      on_release:
+        root.network = idxnetwork.text
+        
+        root.cfg[0]["enabled"] = idxcamera1.enabled
+        root.cfg[0]["name"] = idxcamera1.name
+        root.cfg[0]["preview"] = idxcamera1.preview
+        root.cfg[0]["ip"] = idxcamera1.ipaddress
+
+        root.cfg[1]["enabled"] = idxcamera2.enabled
+        root.cfg[1]["name"] = idxcamera2.name
+        root.cfg[1]["preview"] = idxcamera2.preview
+        root.cfg[1]["ip"] = idxcamera2.ipaddress
+        
+        root.cfg[2]["enabled"] = idxcamera3.enabled
+        root.cfg[2]["name"] = idxcamera3.name
+        root.cfg[2]["preview"] = idxcamera3.preview
+        root.cfg[2]["ip"] = idxcamera3.ipaddress
+        
+        root.cfg[3]["enabled"] = idxcamera4.enabled
+        root.cfg[3]["name"] = idxcamera4.name
+        root.cfg[3]["preview"] = idxcamera4.preview
+        root.cfg[3]["ip"] = idxcamera4.ipaddress
+        
+        root.cfg[4]["enabled"] = idxcamera5.enabled
+        root.cfg[4]["name"] = idxcamera5.name
+        root.cfg[4]["preview"] = idxcamera5.preview
+        root.cfg[4]["ip"] = idxcamera5.ipaddress
+        
+        root.cfg[5]["enabled"] = idxcamera6.enabled
+        root.cfg[5]["name"] = idxcamera6.name
+        root.cfg[5]["preview"] = idxcamera6.preview
+        root.cfg[5]["ip"] = idxcamera6.ipaddress
+        
+        root.cfg[6]["enabled"] = idxcamera7.enabled
+        root.cfg[6]["name"] = idxcamera7.name
+        root.cfg[6]["preview"] = idxcamera7.preview
+        root.cfg[6]["ip"] = idxcamera7.ipaddress
+        
+        root.parent.parent.manager.XCfgAdvancedApply(True)
+    Button:
+      size_hint: None, None
+      size: root.width/10, root.width/10
+      background_normal: 'ximage/cancel_normal.png'
+      background_down: 'ximage/cancel_down.png'
+      always_release: False
+      #cancel
+      on_release:
+        root.network = idxnetwork.text
+        
+        root.cfg[0]["enabled"] = idxcamera1.enabled
+        root.cfg[0]["name"] = idxcamera1.name
+        root.cfg[0]["preview"] = idxcamera1.preview
+        root.cfg[0]["ip"] = idxcamera1.ipaddress
+
+        root.cfg[1]["enabled"] = idxcamera2.enabled
+        root.cfg[1]["name"] = idxcamera2.name
+        root.cfg[1]["preview"] = idxcamera2.preview
+        root.cfg[1]["ip"] = idxcamera2.ipaddress
+        
+        root.cfg[2]["enabled"] = idxcamera3.enabled
+        root.cfg[2]["name"] = idxcamera3.name
+        root.cfg[2]["preview"] = idxcamera3.preview
+        root.cfg[2]["ip"] = idxcamera3.ipaddress
+        
+        root.cfg[3]["enabled"] = idxcamera4.enabled
+        root.cfg[3]["name"] = idxcamera4.name
+        root.cfg[3]["preview"] = idxcamera4.preview
+        root.cfg[3]["ip"] = idxcamera4.ipaddress
+        
+        root.cfg[4]["enabled"] = idxcamera5.enabled
+        root.cfg[4]["name"] = idxcamera5.name
+        root.cfg[4]["preview"] = idxcamera5.preview
+        root.cfg[4]["ip"] = idxcamera5.ipaddress
+        
+        root.cfg[5]["enabled"] = idxcamera6.enabled
+        root.cfg[5]["name"] = idxcamera6.name
+        root.cfg[5]["preview"] = idxcamera6.preview
+        root.cfg[5]["ip"] = idxcamera6.ipaddress
+        
+        root.cfg[6]["enabled"] = idxcamera7.enabled
+        root.cfg[6]["name"] = idxcamera7.name
+        root.cfg[6]["preview"] = idxcamera7.preview
+        root.cfg[6]["ip"] = idxcamera7.ipaddress
+        root.parent.parent.manager.XCfgAdvancedApply()

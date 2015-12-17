@@ -1,0 +1,278 @@
+#:kivy 1.9.0
+#:import kivy kivy
+#:import Factory kivy.factory.Factory 
+
+# class XRecordScreen(Screen):
+  # pass
+<DLabel@Label>:
+  bold: True
+  color: 0.25,0.25,0.25,1
+  font_name: 'DroidSans'
+  font_size: root.parent.width/40
+  text_size: self.size
+  valign: 'top'
+  halign: 'left'
+
+#<RLabel@Label>:
+<RLabel>:
+  color: 1,1,1,1 #0.15,0.15,0.15,1
+  font_name: 'Roboto-Thin' #app.RobotoThin
+  #font_size: root.parent.width/40
+  text_size: self.size
+  valign: 'top'
+  halign: 'left'
+
+<RTextInput@TextInput>:
+  color: 1,1,1,1 #0.15,0.15,0.15,1
+  font_name: 'Roboto-Thin' #app.RobotoThin
+  font_size: root.parent.width/10
+  text_size: self.size
+  valign: 'middle' #valign: 'top'
+  halign: 'left'
+  foreground_color: 1,1,1,1
+  padding: [0,0,0,0]
+  background_active: 'ximage/text_active.png'
+  background_normal: 'ximage/text_normal.png'
+
+<IPTextInput@TextInput>:
+  color: 1,1,1,1 #0.15,0.15,0.15,1
+  font_name: 'Roboto-Thin' #app.RobotoThin
+  font_size: root.parent.width/15
+  text_size: self.size
+  #valign: 'middle' #valign: 'top'
+  #halign: 'left'
+  foreground_color: 1,1,1,1
+  #border: (4,4,4,4)
+  padding: (self.height - self.line_height)/2,(self.height - self.line_height)/2,0,0
+  background_active: 'ximage/text_ip_active.png'
+  background_normal: 'ximage/text_ip_normal.png'
+  use_bubble: True
+  input_type: 'number'
+
+<CTextInput@TextInput>:
+  color: 1,1,1,1 #0.15,0.15,0.15,1
+  font_name: 'Roboto-Thin' #app.RobotoThin
+  font_size: root.parent.width/15
+  text_size: self.size
+  #valign: 'middle' #valign: 'top'
+  #halign: 'left'
+  foreground_color: 1,1,1,1
+  border: (12,12,12,12)
+  padding: self.line_height/5*2,(self.height - self.line_height)/2,0,0
+  background_active: 'ximage/text_cam_active.png'
+  background_normal: 'ximage/text_cam_normal.png'
+  
+<SLabel>:
+  size_hint: None, None
+  size: (root.parent.width-root.parent.width/15*2)/2 - root.parent.width/30, root.parent.width/10 #+ root.width/60
+  cols: 3
+  Button:
+    #color: (1,1,1,1)
+    #text: '%s' %self.size
+    size_hint: None, None
+    #size: root.parent.width/10, root.parent.width/10
+    size: root.parent.width/15, root.parent.width/10
+    background_normal: 'ximage/lcfg_normal.png'
+    background_down: 'ximage/lcfg_down.png'
+    always_release: False
+    on_release: root.index = (root.index - 1) % len(root.option)
+  Label:
+    color: (0.25,0.25,0.25,1) if (root.index == 0 and root.fixcolor <> True) else (1,1,1,1)
+    size_hint: 1,1
+    font_name: 'Roboto-Thin' #app.RobotoThin
+    text_size: self.size
+    valign: 'middle'
+    halign: 'center'
+    font_size: root.parent.width/20
+    text: root.option[root.index % len(root.option)]
+  Button:
+    #color: (1,1,1,0.5)
+    size_hint: None, None
+    size: root.parent.width/15, root.parent.width/10
+    background_normal: 'ximage/rcfg_normal.png'
+    background_down: 'ximage/rcfg_down.png'
+    always_release: False
+    on_release: root.index = (root.index + 1) % len(root.option)
+  
+#<CLabel@Label>:
+<CLabel>:
+  size_hint: None, None
+  size: (root.parent.width-root.parent.width/15*2)/7, (root.parent.width-root.parent.width/15*2)/7
+  #text: ''
+  Label:
+    size_hint: 1,1
+    color: 0,0,0,0
+    text: root.text
+    text_size: self.size
+    valign: 'middle'
+    halign: 'center'
+    font_size: root.parent.width/25
+    font_name: 'DroidSans' #'Roboto-Thin'
+  Image:
+    size_hint: 1,1
+    color: 0,0,0,0
+
+#<CButton@Button>:
+<CButton>:
+  always_release: False
+  size_hint: None, None
+  size: (root.parent.parent.width-root.parent.parent.width/15*2)/7, (root.parent.parent.width-root.parent.parent.width/15*2)/7
+  text_size: self.size
+  valign: 'middle'
+  halign: 'center'
+  #padding: (self.height - self.line_height)/2,(self.height - self.line_height)/2
+  font_size: root.parent.width/25
+  font_name: 'Roboto-Thin'
+  background_down: 'ximage/cam_down.png'
+  
+#<CSync@Button>:
+<CSyncBtn>:
+  always_release: False
+  size_hint: None, None
+  size: (root.parent.parent.width-root.parent.parent.width/15*2)/7, (root.parent.parent.width-root.parent.parent.width/15*2)/7
+  text_size: self.size
+  valign: 'middle'
+  halign: 'center'
+  disabled_color: (1,1,1,0.2)
+  font_size: root.parent.width/25
+  font_name: 'Roboto-Thin'
+  background_down: 'ximage/cam_down.png'
+  background_disabled_normal: 'ximage/cam_disable.png'
+
+#<CMemory@GridLayout>:
+<CMemory>:
+  size_hint: None, None
+  size: root.parent.width,(root.parent.width-root.parent.width/15*2)/7
+  #spacing: root.parent.width/15, 0
+  cols: 7
+  CButton:
+    color: (0,0.75,1,1)
+    disabled_color: (1,1,1,0.2)
+    size_hint: None, None
+    text: '%d' %root.number
+    background_normal: 'ximage/cam_enable.png'
+    background_down: 'ximage/cam_enable.png'
+    background_disabled_normal: 'ximage/cam_disable.png'
+    disabled: not root.linked
+  Label:
+    size_hint: None, None
+    size: root.parent.width/30, (root.parent.width-root.parent.width/15*2)/7
+  RLabel:
+    markup: True
+    size_hint: None, None
+    size: root.parent.width/5+root.parent.width/60, (root.parent.width-root.parent.width/15*2)/7
+    valign: 'middle'
+    font_size: root.parent.width/25
+    text: root.battery if root.linked else ''
+  CButton:
+    color: (1,0,0,0.8) if root.format else (1,1,1,0.2)
+    disabled_color: (1,1,1,0.2)
+    size_hint: None, None
+    text: 'yes' if root.format else 'no'
+    background_normal: 'ximage/cam_format.png' if root.format else 'ximage/cam_disable.png'
+    background_disabled_normal: 'ximage/cam_disable.png'
+    disabled: not root.linked
+    on_release: root.format = (root.format + 1) % 2
+  Label:
+    size_hint: None, None
+    size: root.parent.width/45, (root.parent.width-root.parent.width/15*2)/7
+  RLabel:
+    markup: True
+    size_hint: None, None
+    size: root.parent.width/5+root.parent.width/60, (root.parent.width-root.parent.width/15*2)/7
+    valign: 'middle'
+    font_size: root.parent.width/25
+    text: root.memory if root.linked else ''
+  CButton:
+    color: (1,0,0,0.8) if root.reboot else (1,1,1,0.2)
+    disabled_color: (1,1,1,0.2)
+    size_hint: None, None
+    text: 'yes' if root.reboot else 'no'
+    background_normal: 'ximage/cam_format.png' if root.reboot else 'ximage/cam_disable.png'
+    background_disabled_normal: 'ximage/cam_disable.png'
+    disabled: not root.linked
+    on_release: root.reboot = (root.reboot + 1) % 2
+  
+#<CStatus@GridLayout>:
+<CStatus>:
+  size_hint: None, None
+  size: root.parent.width,(root.parent.width-root.parent.width/15*2)/7
+  #spacing: root.parent.width/15, 0
+  cols: 7
+  CButton:
+    color: (0,0.75,1,1) if root.enabled else (1,1,1,0.2)
+    size_hint: None, None
+    text: '%d' %root.number
+    background_normal: 'ximage/cam_enable.png' if root.enabled else 'ximage/cam_disable.png'
+    on_release: root.enabled = (root.enabled + 1) % 2
+  Label:
+    size_hint: None, None
+    size: (root.parent.width - root.parent.width/15*5)/4 - (root.parent.width-root.parent.width/15*2)/7 + root.parent.width/30, (root.parent.width-root.parent.width/15*2)/7
+    #text: '%s' %self.size
+  CTextInput:
+    size_hint: None, None
+    size: (root.parent.width - root.parent.width/15*5)/4 + root.parent.width/30, root.parent.width/12+root.parent.width/50
+    #font_size: root.parent.width/15
+    text: root.name
+    on_text: root.name = self.text
+  Label:
+    size_hint: None, None
+    size: root.parent.width/15, (root.parent.width-root.parent.width/15*2)/7
+  CButton:
+    color: (1,1,1,0.8) if root.preview else (1,1,1,0.2)
+    size_hint: None, None
+    text: 'on' if root.preview else 'off'
+    background_normal: 'ximage/cam_preview.png' if root.preview else 'ximage/cam_disable.png'
+    on_release: root.preview = (root.preview + 1) % 2
+  Label:
+    size_hint: None, None
+    size: (root.parent.width - root.parent.width/15*5)/4 - (root.parent.width-root.parent.width/15*2)/7 + root.parent.width/30, (root.parent.width-root.parent.width/15*2)/7
+    #text: '%s' %self.size
+  CTextInput:
+    size_hint: None, None
+    size: (root.parent.width - root.parent.width/15*5)/4 + root.parent.width/30, root.parent.width/12+root.parent.width/50
+    #font_size: root.parent.width/15
+    text: root.ipaddress
+    on_text: root.ipaddress = self.text
+  
+<LSpinner>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.parent.width-root.parent.width/15*2)/3,(root.parent.width-root.parent.width/15*2)/3
+  background_normal: 'ximage/left_normal.png'
+  background_down: 'ximage/left_down.png'
+  background_disabled_normal: 'ximage/left_disable.png'
+
+<RecButton>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
+  #text: 'RECORD'
+  always_release: False
+  font_name: 'Roboto-Thin'
+  font_size: self.width/8.7
+  background_normal: 'ximage/circle_normal.png'
+  background_down: 'ximage/circle_down.png'
+  background_disabled_normal: 'ximage/circle_disable.png'
+
+<RSpinner>:
+  color: 1,1,1,1
+  disabled_color: 0.25,0.25,0.25,1
+  size_hint: 1, 1
+  #size: (root.width-root.width/15*2)/3,(root.width-root.width/15*2)/3
+  background_normal: 'ximage/right_normal.png'
+  background_down: 'ximage/right_down.png'
+  background_disabled_normal: 'ximage/right_disable.png'
+
+<XRecordScreen@Screen>:
+  AnchorLayout:
+    anchor_x: 'left'
+    anchor_y: 'top'
+    canvas:
+      Color: 
+        rgba: 0,0,0,1 #0.95,0.95,0.95,1
+      Rectangle:
+        size: self.size
+        pos: self.pos
