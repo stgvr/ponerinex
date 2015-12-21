@@ -383,10 +383,18 @@ class XPonerine(ScreenManager):
   def __init__(self, appevent):
     super(XPonerine, self).__init__()
     self.inited = False
-    
-    self.applyconfig = False
-    self.appexit = appevent[0]
 
+    self.appexit = appevent[0]
+    
+    #screens control flags
+    self.XcfgAdvApply = False
+    self.XcfgAdvLoad = False
+    self.XcfgCamLoad = False
+    self.XcfgExpApply = False
+    self.XcfgExpLoad = False
+    self.XcfgStaApply = False
+    self.XcfgStaLoad = False
+    
     #camera config settings
     self.cfglist = []
     self.autorename = 0
@@ -450,6 +458,10 @@ class XPonerine(ScreenManager):
       return False
       
   def DetectCam(self,*args):
+    Clock.unschedule(self.XCfgAdvancedDraw)
+    Clock.schedule_once(self.XCfgAdvancedDraw)
+    #Clock.unschedule(self.XCfgCamerasDraw)
+    #Clock.schedule_once(self.XCfgCamerasDraw)
     self.cam = []
     self.quitcam = []
     self.renlist = []
@@ -470,10 +482,6 @@ class XPonerine(ScreenManager):
       threading.Thread(target=self.DoDetectCam, name="%sDoDetectCam" %cam.ip, args=(i,)).start()
       self.cam.append(cam)
       self.renlist.append({})
-    Clock.unschedule(self.XCfgAdvancedDraw)
-    Clock.schedule_once(self.XCfgAdvancedDraw)
-    Clock.unschedule(self.XCfgCamerasDraw)
-    Clock.schedule_once(self.XCfgCamerasDraw)
     self.inited = True
     
   def DoDetectCam(self, index):
@@ -526,20 +534,19 @@ class XPonerine(ScreenManager):
           timewait += 1
         self.lblcam[index].status = "off"
   
-  def DoSetConfig(self, index, type):
+  def DoSetConfig(self, index, type, force=True):
     cam = self.cam[index]
-    if type in ("buzzer_volume","meter_mode","preview_status","led_mode","start_wifi_while_booted"):
+    if force and type in ("buzzer_volume","meter_mode","preview_status","led_mode","start_wifi_while_booted"):
       cam.CheckSetting(type)
+      t1 = time.time()
+      while True:
+        if cam.cfgdict.has_key(type):
+          break
+        if (time.time() - t1) > 30.0:
+          cam.msgbusy = 0
+          break
     else:
       return
-      
-    t1 = time.time()
-    while True:
-      if cam.cfgdict.has_key(type):
-        break
-      if (time.time() - t1) > 30.0:
-        cam.msgbusy = 0
-        break
     
     if type == "buzzer_volume":
       opt = ['remain','high','low','mute']
@@ -586,6 +593,61 @@ class XPonerine(ScreenManager):
           cam.StopViewfinder()
           cam.ChangeSetting(type,"off")
           
+  def DoReadAllStatus(self, index):
+    cam = self.cam[index]
+    setallok = cam.setallok
+    setallerror = cam.setallerror
+    t1 = time.time()
+    cam.ReadAllStatus()
+    readerror = False
+    while not setallok.isSet():
+      time.sleep(1)
+      if setallerror.isSet():
+        readerror = True
+        break
+    print "Read %d All Status %s" %(index, time.time()-t1)
+    recstatus = ""
+    if cam.cfgdict.has_key("app_status"):
+      recstatus = cam.cfgdict["app_status"]
+    if recstatus in ("record","recording"):
+      return
+    if cam.token == 1:
+      setok = cam.setok
+      t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()+ index * 10))
+      cam.ChangeSetting("camera_clock", t)
+      setok.wait(5)
+      cam.msgbusy = 0
+      if self.systemmode == 0: #video
+        cam.ChangeSetting("system_mode", "record")
+        setok.wait(5)
+        cam.ChangeSetting("system_default_mode", "record")
+        setok.wait(5)
+        cam.ChangeSetting("rec_default_mode", "record")
+        setok.wait(5)
+        cam.ChangeSetting("rec_mode", "record")
+        setok.wait(5)
+      elif self.systemmode == 1: #photo
+        cam.ChangeSetting("system_mode", "capture")
+        setok.wait(5)
+        cam.ChangeSetting("system_default_mode", "capture")
+        setok.wait(5)
+        cam.ChangeSetting("capture_default_mode", "precise quality")
+        setok.wait(5)
+        cam.ChangeSetting("capture_mode", "precise quality")
+        setok.wait(5)
+      cam.msgbusy = 0
+      # set buzzer volume
+      if self.buzzervolume != 0:
+        threading.Thread(target=self.DoSetConfig, args=(index,"buzzer_volume",readerror,), name="%sDoSetConfig" %cam.name).start()
+      # set meter mode
+      threading.Thread(target=self.DoSetConfig, args=(index,"meter_mode",readerror,), name="%sDoSetConfig" %cam.name).start()
+      # set preview status
+      threading.Thread(target=self.DoSetConfig, args=(index,"preview_status",readerror,), name="%sDoSetConfig" %cam.name).start()
+      # check led mod
+      threading.Thread(target=self.DoSetConfig, args=(index,"led_mode",readerror,), name="%sDoSetConfig" %cam.name).start()
+      # start wifi on boot
+      threading.Thread(target=self.DoSetConfig, args=(index,"start_wifi_while_booted",readerror,), name="%sDoSetConfig" %cam.name).start()
+    
   def DoConnect(self, index):
     print "Doconnect camera %d" %index
     cam = self.cam[index]
@@ -610,6 +672,10 @@ class XPonerine(ScreenManager):
       pass
     print "name", cam.name, "token", cam.token
     
+    if self.linked == 0:
+      self.lblstatus.color = (0,1,0,0.8)
+      self.lblstatus.text = 'LINK'
+      
     #check app status
     cam.CheckSetting("app_status")
     recstatus = ""
@@ -628,59 +694,22 @@ class XPonerine(ScreenManager):
       self.btnrecord.text = 'START'
       self.btnrecord.disabled = True
       self.btnmeter.disabled = True
-    # has not recording
-    else:
-      # sync time
-      setok = cam.setok
-      #offset index*12=0,10,20,30,40,50,60
-      t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()+ index * 10))
-      print "time offset: %s" %t
-      cam.ChangeSetting("camera_clock", t)
-      setok.wait(5)
-      cam.msgbusy = 0
-      if cam.token <= 2:
-        if self.systemmode == 0: #video
-          cam.ChangeSetting("system_mode", "record")
-          setok.wait(5)
-          cam.ChangeSetting("system_default_mode", "record")
-          setok.wait(5)
-          cam.ChangeSetting("rec_default_mode", "record")
-          setok.wait(5)
-          cam.ChangeSetting("rec_mode", "record")
-          setok.wait(5)
-        elif self.systemmode == 1: #photo
-          cam.ChangeSetting("system_mode", "capture")
-          setok.wait(5)
-          cam.ChangeSetting("system_default_mode", "capture")
-          setok.wait(5)
-          cam.ChangeSetting("capture_default_mode", "precise quality")
-          setok.wait(5)
-          cam.ChangeSetting("capture_mode", "precise quality")
-          setok.wait(5)
-      cam.msgbusy = 0
-      # set buzzer volume
-      if self.buzzervolume != 0:
-        threading.Thread(target=self.DoSetConfig, args=(index,"buzzer_volume",), name="%sDoSetConfig" %cam.name).start()
-      # set meter mode
-      threading.Thread(target=self.DoSetConfig, args=(index,"meter_mode",), name="%sDoSetConfig" %cam.name).start()
-      # set preview status
-      threading.Thread(target=self.DoSetConfig, args=(index,"preview_status",), name="%sDoSetConfig" %cam.name).start()
-      # check led mod
-      threading.Thread(target=self.DoSetConfig, args=(index,"led_mode",), name="%sDoSetConfig" %cam.name).start()
-      # start wifi on boot
-      threading.Thread(target=self.DoSetConfig, args=(index,"start_wifi_while_booted",), name="%sDoSetConfig" %cam.name).start()
-      
+    
     self.lblcam[index].battery = 0
     self.lblcam[index].memory = 0
     self.lblcam[index].adapter = 0
     self.lblcam[index].bind(battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
+    threading.Thread(target=self.DoReadAllStatus, name="%sDoReadAllStatus" %cam.name, args=(index,)).start()
     threading.Thread(target=self.DoFileTaken, args=(index,recstatus,), name="%sDoFileTaken" %cam.name).start()
     threading.Thread(target=self.DoStartRecord, args=(index,recstatus,), name="%sDoStartRecord" %cam.name).start()
     
     while True:
-      if cam.cfgdict.has_key("video_resolution"):
+      if cam.status.has_key("battery"):
         break
       time.sleep(1)
+    #print "Check All Status", time.time() - t1
+    
+    self.lblrecordtime.text = self.Second2Time(time.time() - t1)
     self.lblcam[index].status = "link"
     
   def DoDisconnect(self, index):
@@ -1039,15 +1068,18 @@ class XPonerine(ScreenManager):
     print popup.battery,popup.format,popup.memory,popup.reboot
     wg_status.clear_widgets()
     wg_status.add_widget(popup)
+    self.get_screen('exposure').unbind(on_enter=self.XCfgStatusDraw)
+    self.XcfgStaLoad = True
   
   def XCfgStatusOpen(self, btn):
-    #self.XCfgStatusDraw()
+    self.XcfgStaApply = False
     self.transition = SlideTransition(direction='left')
     self.current = 'status'
   
   def XCfgStatusApply(self, popup, apply=False):
     self.transition = SlideTransition(direction='right')
-    self.current = 'main'
+    self.XcfgStaApply = apply
+    print "DoXCfgExposureApply",popup
     #popup = self.get_screen('status').children[0].children[0]
     #print obj,popup
     if apply:
@@ -1055,7 +1087,8 @@ class XPonerine(ScreenManager):
         if self.cam[i].link:
           if popup.format[i] or popup.reboot[i]:
             self.lblcam[i].status = 'busy'
-            threading.Thread(target=self.DoCamStatusWait, args = (i,popup.format[i],popup.reboot[i]),name="DoCamStatusWait%d" %i).start()
+            #threading.Thread(target=self.DoCamStatusWait, args = (i,popup.format[i],popup.reboot[i]),name="DoCamStatusWait%d" %i).start()
+    self.current = 'main'
     #self.get_screen('status').children[0].clear_widgets()
     
   def DoCamStatusWait(self, index, format=0, reboot=0):
@@ -1131,64 +1164,96 @@ class XPonerine(ScreenManager):
     wg_exposure.add_widget(popup)
     
   def XCfgExposureOpen(self, btn, direction='left'):
+    self.XcfgExpApply = False
     if direction == 'right':
       self.transition = SlideTransition(direction='right')
     else:
       self.transition = SlideTransition(direction='left')
-      popup = self.get_screen('exposure').children[0].children[0]
-      
-      popup.ids.idxmetermode.index = self.cammetermode
-      if self.camexposure == "manual":
-        popup.ids.idxexposuremode.index = 2
-        i = 0
-        for shuttervalue in self.shutterlist:
-          if self.shutter == shuttervalue:
-            popup.ids.idxshutterspeed.index = i
-            break
-          i += 1
-        i = 0
-        for isovalue in self.shutterlist:
-          if self.iso == isovalue:
-            popup.ids.idxisosensitive.index = i
-            break
-          i += 1
-      elif self.camexposure == "sync":
-        popup.ids.idxexposuremode.index = 1
-        popup.ids.idxshutterspeed.index = 0
-        popup.ids.idxisosensitive.index = 0
-      else:
-        popup.ids.idxexposuremode.index = 0
-        popup.ids.idxshutterspeed.index = 0
-        popup.ids.idxisosensitive.index = 0
-      popup.ids.idxcamera1.checked = False
-      popup.ids.idxcamera2.checked = False
-      popup.ids.idxcamera3.checked = False
-      popup.ids.idxcamera4.checked = False
-      popup.ids.idxcamera5.checked = False
-      popup.ids.idxcamera6.checked = False
-      popup.ids.idxcamera7.checked = False
-      
-      Clock.unschedule(self.XCfgStatusDraw)
-      Clock.schedule_once(self.XCfgStatusDraw)
+      #self.get_screen('main').unbind(on_enter=self.DoXCfgAdvancedApply)
+      self.get_screen('main').bind(on_enter=self.DoXCfgExposureApply)
+    if self.XcfgStaLoad == False:
+      self.get_screen('exposure').bind(on_enter=self.XCfgStatusDraw)
     self.current = 'exposure'
+#       popup = self.get_screen('exposure').children[0].children[0]
+#       
+#       popup.ids.idxmetermode.index = self.cammetermode
+#       if self.camexposure == "manual":
+#         popup.ids.idxexposuremode.index = 2
+#         i = 0
+#         for shuttervalue in self.shutterlist:
+#           if self.shutter == shuttervalue:
+#             popup.ids.idxshutterspeed.index = i
+#             break
+#           i += 1
+#         i = 0
+#         for isovalue in self.shutterlist:
+#           if self.iso == isovalue:
+#             popup.ids.idxisosensitive.index = i
+#             break
+#           i += 1
+#       elif self.camexposure == "sync":
+#         popup.ids.idxexposuremode.index = 1
+#         popup.ids.idxshutterspeed.index = 0
+#         popup.ids.idxisosensitive.index = 0
+#       else:
+#         popup.ids.idxexposuremode.index = 0
+#         popup.ids.idxshutterspeed.index = 0
+#         popup.ids.idxisosensitive.index = 0
+#       popup.ids.idxcamera1.checked = False
+#       popup.ids.idxcamera2.checked = False
+#       popup.ids.idxcamera3.checked = False
+#       popup.ids.idxcamera4.checked = False
+#       popup.ids.idxcamera5.checked = False
+#       popup.ids.idxcamera6.checked = False
+#       popup.ids.idxcamera7.checked = False
+#       
+#       Clock.unschedule(self.XCfgStatusDraw)
+#       Clock.schedule_once(self.XCfgStatusDraw)
     
   def XCfgExposureApply(self, popup, apply=False):
     self.transition = SlideTransition(direction='right')
-    self.current = 'main'
+    self.XcfgExpApply = apply
     if apply:
-      threading.Thread(target=self.DoXCfgExposureApply, args=(popup,), name="DoXCfgExposureApply").start()
+      if self.cammetermode <> popup.metermode:
+        i = 0
+        for cam in self.cam:
+          if cam.link:
+            self.lblcam[i].status = 'busy'
+          i += 1
+    self.current = 'main'
+#     if apply:
+#       threading.Thread(target=self.DoXCfgExposureApply, args=(popup,), name="DoXCfgExposureApply").start()
     
-  def DoXCfgExposureApply(self, popup):
-    #popup = self.get_screen('exposure').children[0].children[0]
-    if self.cammetermode <> popup.metermode:
-      self.cammetermode = popup.metermode
-      self.lblmetermode.text = self.meterlist[popup.metermode]
-      i = 0
-      for cam in self.cam:
-        if cam.link:
-          self.lblcam[i].status = 'busy'
-          if cam.cfgdict.has_key('meter_mode'):
-            if cam.cfgdict['meter_mode'] != self.meterlist[popup.metermode]:
+  def DoXCfgExposureApply(self,*args):
+    print "DoXCfgExposureApply",self.XcfgExpApply,self.XcfgStaApply
+    self.get_screen('main').unbind(on_enter=self.DoXCfgExposureApply)
+    if self.XcfgStaApply:
+      popup = self.get_screen('status').children[0].children[0]
+      print "DoXCfgExposureApply",popup
+      for i in range(7):
+        if self.cam[i].link:
+          if popup.format[i] or popup.reboot[i]:
+            #self.lblcam[i].status = 'busy'
+            threading.Thread(target=self.DoCamStatusWait, args = (i,popup.format[i],popup.reboot[i]),name="DoCamStatusWait%d" %i).start()
+    if self.XcfgExpApply:
+      popup = self.get_screen('exposure').children[0].children[0]
+      if self.cammetermode <> popup.metermode:
+        self.cammetermode = popup.metermode
+        self.lblmetermode.text = self.meterlist[popup.metermode]
+        i = 0
+        for cam in self.cam:
+          if cam.link:
+            #self.lblcam[i].status = 'busy'
+            if cam.cfgdict.has_key('meter_mode'):
+              if cam.cfgdict['meter_mode'] != self.meterlist[popup.metermode]:
+                if cam.preview:
+                  cam.StopViewfinder()
+                  while cam.vfstart:
+                    pass
+                cam.ChangeSetting("meter_mode", self.meterlist[popup.metermode])
+                if cam.preview:
+                  cam.StartViewfinder()
+            else:
               if cam.preview:
                 cam.StopViewfinder()
                 while cam.vfstart:
@@ -1196,41 +1261,38 @@ class XPonerine(ScreenManager):
               cam.ChangeSetting("meter_mode", self.meterlist[popup.metermode])
               if cam.preview:
                 cam.StartViewfinder()
-          else:
-            if cam.preview:
-              cam.StopViewfinder()
-              while cam.vfstart:
-                pass
-            cam.ChangeSetting("meter_mode", self.meterlist[popup.metermode])
-            if cam.preview:
-              cam.StartViewfinder()
-          self.lblcam[i].status = 'link'
-        i += 1
-      self.WriteConfig()
-      self.cfglist = self.ReadConfig()
+            self.lblcam[i].status = 'link'
+          i += 1
+        self.WriteConfig()
+        self.cfglist = self.ReadConfig()
+      
+      if self.camexposure == "manual":
+        old_exposure = 2
+      elif self.camexposure == "sync":
+        old_exposure = 1
+      else:
+        old_exposure = 0
+      
+      if popup.exposure == 1 and popup.sync > 0: #sync exposure
+        self.lblexposure.text = 'sync'
+        self.lblshutter.text = 'auto'
+        self.lbliso.text = 'auto'
+        index = popup.sync - 1
+        self.lblcam[index].status = 'busy'
+        threading.Thread(target=self.DoMeter, args=(index,True,),name="DoMeter%d" %index).start()
+      elif popup.exposure == 2: #manual exposure
+        self.ManualExposure(popup.shutter, popup.iso)   
+      else: # auto exposure
+        self.lblexposure.text = 'auto'
+        self.lblshutter.text = 'auto'
+        self.lbliso.text = 'auto'
+        if old_exposure <> 0:
+          self.AutoExposure()
     
-    if self.camexposure == "manual":
-      old_exposure = 2
-    elif self.camexposure == "sync":
-      old_exposure = 1
-    else:
-      old_exposure = 0
-    
-    if popup.exposure == 1 and popup.sync > 0: #sync exposure
-      self.lblexposure.text = 'sync'
-      self.lblshutter.text = 'auto'
-      self.lbliso.text = 'auto'
-      index = popup.sync - 1
-      self.lblcam[index].status = 'busy'
-      threading.Thread(target=self.DoMeter, args=(index,True,),name="DoMeter%d" %index).start()
-    elif popup.exposure == 2: #manual exposure
-      self.ManualExposure(popup.shutter, popup.iso)   
-    else: # auto exposure
-      self.lblexposure.text = 'auto'
-      self.lblshutter.text = 'auto'
-      self.lbliso.text = 'auto'
-      if old_exposure <> 0:
-        self.AutoExposure()
+    Clock.unschedule(self.XCfgExposureDraw)
+    Clock.schedule_once(self.XCfgExposureDraw)
+    self.XcfgStaLoad = False
+    self.get_screen('status').children[0].clear_widgets()
     
   def ManualExposure(self, idx_shutter, idx_iso):
     #1/ 30s: 1012
@@ -1334,6 +1396,10 @@ class XPonerine(ScreenManager):
     popup.cfg = cfg
     wg_config.clear_widgets()
     wg_config.add_widget(popup)
+    #advanced screen
+    print 'XCfgAdvancedDraw', self.current_screen
+    self.get_screen('advanced').unbind(on_enter=self.XCfgCamerasDraw)
+    self.XcfgCamLoad = True
   
   def XCfgCamerasOpen(self,*args):
     self.transition = SlideTransition(direction='right')
@@ -1370,172 +1436,195 @@ class XPonerine(ScreenManager):
     popup.systemmode = self.systemmode
     wg_advanced.clear_widgets()
     wg_advanced.add_widget(popup)
-    
+    self.XcfgAdvLoad = True
+  
   def XCfgAdvancedOpen(self, direction='right'):
+    self.XcfgAdvApply = False
     if direction == 'left':
       self.transition = SlideTransition(direction='left')
     else:
+      #self.get_screen('main').unbind(on_enter=self.DoXCfgExposureApply)
+      self.get_screen('main').bind(on_enter=self.DoXCfgAdvancedApply)
       self.transition = SlideTransition(direction='right')
-      popup = self.get_screen('advanced').children[0].children[0]
-      popup.ids.idxscenename.text = self.camscenename
-      popup.ids.idxsceneshot.text = '%02d' %self.camsceneshot
-      popup.ids.idxautorename.index = self.autorename
-      popup.ids.idxmoveduplicated.index = self.moveduplicated
-      popup.ids.idxbuzzeronstart.index = self.buzzeronstart
-      popup.ids.idxbuzzeronstop.index = self.buzzeronstop
-      popup.ids.idxledonstart.index = self.ledonstart
-      popup.ids.idxledonstop.index = self.ledonstop
-      popup.ids.idxbuzzervolume.index = self.buzzervolume
-      popup.ids.idxsystemmode.index = self.systemmode
-      
-      popup = self.get_screen('config').children[0].children[0]
-      cfg = []
-      for i in range(7):
-        segment = self.cfglist[i]["ip"].split(".")
-        if self.CheckIPAddress(self.cfglist[i]["ip"]):
-          ip = segment[3]
-          if i == 0:
-            popup.ids.idxnetwork.text = segment[0] + '.' + segment[1] + '.' + segment[2]
-        else:
-          ip = 101 + i
-          if i == 0:
-            popup.ids.idxnetwork.text = '192.168.31'
-        initstr = '{"camera": %d,"ip": "%s","enabled": %d,"name": "%s","preview": %d}' %(self.cfglist[i]["camera"], ip, self.cfglist[i]["enabled"], self.cfglist[i]["name"], self.cfglist[i]["preview"])
-        cfg.append(json.loads(initstr))
-        
-      popup.ids.idxcamera1.enabled = cfg[0]["enabled"]
-      popup.ids.idxcamera1.name = cfg[0]["name"]
-      popup.ids.idxcamera1.preview = cfg[0]["preview"]
-      popup.ids.idxcamera1.ipaddress = cfg[0]["ip"]
-      
-      popup.ids.idxcamera2.enabled = cfg[1]["enabled"]
-      popup.ids.idxcamera2.name = cfg[1]["name"]
-      popup.ids.idxcamera2.preview = cfg[1]["preview"]
-      popup.ids.idxcamera2.ipaddress = cfg[1]["ip"]
-      
-      popup.ids.idxcamera3.enabled = cfg[2]["enabled"]
-      popup.ids.idxcamera3.name = cfg[2]["name"]
-      popup.ids.idxcamera3.preview = cfg[2]["preview"]
-      popup.ids.idxcamera3.ipaddress = cfg[2]["ip"]
-      
-      popup.ids.idxcamera4.enabled = cfg[3]["enabled"]
-      popup.ids.idxcamera4.name = cfg[3]["name"]
-      popup.ids.idxcamera4.preview = cfg[3]["preview"]
-      popup.ids.idxcamera4.ipaddress = cfg[3]["ip"]
-      
-      popup.ids.idxcamera5.enabled = cfg[4]["enabled"]
-      popup.ids.idxcamera5.name = cfg[4]["name"]
-      popup.ids.idxcamera5.preview = cfg[4]["preview"]
-      popup.ids.idxcamera5.ipaddress = cfg[4]["ip"]
-      
-      popup.ids.idxcamera6.enabled = cfg[5]["enabled"]
-      popup.ids.idxcamera6.name = cfg[5]["name"]
-      popup.ids.idxcamera6.preview = cfg[5]["preview"]
-      popup.ids.idxcamera6.ipaddress = cfg[5]["ip"]
-      
-      popup.ids.idxcamera7.enabled = cfg[6]["enabled"]
-      popup.ids.idxcamera7.name = cfg[6]["name"]
-      popup.ids.idxcamera7.preview = cfg[6]["preview"]
-      popup.ids.idxcamera7.ipaddress = cfg[6]["ip"]
-      
+    print "XcfgCamLoad", self.XcfgCamLoad, self.get_screen('advanced')
+    if self.XcfgCamLoad == False:
+      self.get_screen('advanced').bind(on_enter=self.XCfgCamerasDraw)
     self.current = 'advanced'
-
+#       popup = self.get_screen('advanced').children[0].children[0]
+#       popup.ids.idxscenename.text = self.camscenename
+#       popup.ids.idxsceneshot.text = '%02d' %self.camsceneshot
+#       popup.ids.idxautorename.index = self.autorename
+#       popup.ids.idxmoveduplicated.index = self.moveduplicated
+#       popup.ids.idxbuzzeronstart.index = self.buzzeronstart
+#       popup.ids.idxbuzzeronstop.index = self.buzzeronstop
+#       popup.ids.idxledonstart.index = self.ledonstart
+#       popup.ids.idxledonstop.index = self.ledonstop
+#       popup.ids.idxbuzzervolume.index = self.buzzervolume
+#       popup.ids.idxsystemmode.index = self.systemmode
+#       
+#       popup = self.get_screen('config').children[0].children[0]
+#       cfg = []
+#       for i in range(7):
+#         segment = self.cfglist[i]["ip"].split(".")
+#         if self.CheckIPAddress(self.cfglist[i]["ip"]):
+#           ip = segment[3]
+#           if i == 0:
+#             popup.ids.idxnetwork.text = segment[0] + '.' + segment[1] + '.' + segment[2]
+#         else:
+#           ip = 101 + i
+#           if i == 0:
+#             popup.ids.idxnetwork.text = '192.168.31'
+#         initstr = '{"camera": %d,"ip": "%s","enabled": %d,"name": "%s","preview": %d}' %(self.cfglist[i]["camera"], ip, self.cfglist[i]["enabled"], self.cfglist[i]["name"], self.cfglist[i]["preview"])
+#         cfg.append(json.loads(initstr))
+#         
+#       popup.ids.idxcamera1.enabled = cfg[0]["enabled"]
+#       popup.ids.idxcamera1.name = cfg[0]["name"]
+#       popup.ids.idxcamera1.preview = cfg[0]["preview"]
+#       popup.ids.idxcamera1.ipaddress = cfg[0]["ip"]
+#       
+#       popup.ids.idxcamera2.enabled = cfg[1]["enabled"]
+#       popup.ids.idxcamera2.name = cfg[1]["name"]
+#       popup.ids.idxcamera2.preview = cfg[1]["preview"]
+#       popup.ids.idxcamera2.ipaddress = cfg[1]["ip"]
+#       
+#       popup.ids.idxcamera3.enabled = cfg[2]["enabled"]
+#       popup.ids.idxcamera3.name = cfg[2]["name"]
+#       popup.ids.idxcamera3.preview = cfg[2]["preview"]
+#       popup.ids.idxcamera3.ipaddress = cfg[2]["ip"]
+#       
+#       popup.ids.idxcamera4.enabled = cfg[3]["enabled"]
+#       popup.ids.idxcamera4.name = cfg[3]["name"]
+#       popup.ids.idxcamera4.preview = cfg[3]["preview"]
+#       popup.ids.idxcamera4.ipaddress = cfg[3]["ip"]
+#       
+#       popup.ids.idxcamera5.enabled = cfg[4]["enabled"]
+#       popup.ids.idxcamera5.name = cfg[4]["name"]
+#       popup.ids.idxcamera5.preview = cfg[4]["preview"]
+#       popup.ids.idxcamera5.ipaddress = cfg[4]["ip"]
+#       
+#       popup.ids.idxcamera6.enabled = cfg[5]["enabled"]
+#       popup.ids.idxcamera6.name = cfg[5]["name"]
+#       popup.ids.idxcamera6.preview = cfg[5]["preview"]
+#       popup.ids.idxcamera6.ipaddress = cfg[5]["ip"]
+#       
+#       popup.ids.idxcamera7.enabled = cfg[6]["enabled"]
+#       popup.ids.idxcamera7.name = cfg[6]["name"]
+#       popup.ids.idxcamera7.preview = cfg[6]["preview"]
+#       popup.ids.idxcamera7.ipaddress = cfg[6]["ip"]
+    
   def XCfgAdvancedApply(self, apply=False):
     self.transition = SlideTransition(direction='left')
-    self.current = 'main'
     if apply:
-      Clock.unschedule(self.DoXCfgAdvancedApply)
-      Clock.schedule_once(self.DoXCfgAdvancedApply,1)
-  
+      i = 0
+      for cam in self.cam:
+        if cam.link:
+          self.lblcam[i].status = 'busy'
+        i += 1
+    self.current = 'main'
+    self.XcfgAdvApply = apply
+    #self.testdelay = time.time()
+    # if apply:
+      # self.testdelay = time.time()
+      # Clock.unschedule(self.DoXCfgAdvancedApply)
+      # Clock.schedule_once(self.DoXCfgAdvancedApply)
+    # print "main", self.current, self.current_screen
+    
   def DoXCfgAdvancedApply(self,*args):
-    i = 0
-    for cam in self.cam:
-      if cam.link:
-        self.lblcam[i].status = 'busy'
-      i += 1
-    # advanced setting
-    popup = self.get_screen('advanced').children[0].children[0]
-    if self.camscenename <> self.StringFilter(popup.scenename):
-      self.lblscenename.text = self.StringFilter(popup.scenename)
-      self.lblsceneshot.text = '01'
-    self.autorename = popup.autorename
-    self.moveduplicated = popup.moveduplicated
-    self.buzzeronstart = popup.buzzeronstart
-    self.buzzeronstop = popup.buzzeronstop
-    self.buzzervolume = popup.buzzervolume
-    if self.buzzervolume != 0:
-      opt = ['remain','high','low','mute']
-      for cam in self.cam:
-        if cam.link:
-          if cam.cfgdict.has_key('buzzer_volume'):
-            if cam.cfgdict['buzzer_volume'] != opt[self.buzzervolume]:
+    self.get_screen('main').unbind(on_enter=self.DoXCfgAdvancedApply)
+    print "DoXCfgAdvancedApply"
+    if self.XcfgAdvApply:
+      #print self.current, time.time() - self.testdelay
+#       i = 0
+#       for cam in self.cam:
+#         if cam.link:
+#           self.lblcam[i].status = 'busy'
+#         i += 1
+      # advanced setting
+      popup = self.get_screen('advanced').children[0].children[0]
+      if self.camscenename <> self.StringFilter(popup.scenename):
+        self.lblscenename.text = self.StringFilter(popup.scenename)
+        self.lblsceneshot.text = '01'
+      self.autorename = popup.autorename
+      self.moveduplicated = popup.moveduplicated
+      self.buzzeronstart = popup.buzzeronstart
+      self.buzzeronstop = popup.buzzeronstop
+      self.buzzervolume = popup.buzzervolume
+      if self.buzzervolume != 0:
+        opt = ['remain','high','low','mute']
+        for cam in self.cam:
+          if cam.link:
+            if cam.cfgdict.has_key('buzzer_volume'):
+              if cam.cfgdict['buzzer_volume'] != opt[self.buzzervolume]:
+                cam.ChangeSetting("buzzer_volume", opt[self.buzzervolume])
+            else:
               cam.ChangeSetting("buzzer_volume", opt[self.buzzervolume])
-          else:
-            cam.ChangeSetting("buzzer_volume", opt[self.buzzervolume])
-    self.ledonstart = popup.ledonstart
-    self.ledonstop = popup.ledonstop
-    # update led_mode
-    i = 0
-    for cam in self.cam:
-      if cam.link:
-        threading.Thread(target=self.DoSetConfig, args=(i,"led_mode",), name="%sDoSetConfig" %cam.name).start()
-      i += 1
-    self.systemmode = popup.systemmode
-    if self.systemmode == 0:
-      self.btnrecord.text = 'RECORD'
+      self.ledonstart = popup.ledonstart
+      self.ledonstop = popup.ledonstop
+      # update led_mode
+      i = 0
       for cam in self.cam:
         if cam.link:
-          cam.ChangeSetting("system_mode", "record")
-          cam.ChangeSetting("system_default_mode", "record")
-          cam.ChangeSetting("rec_default_mode", "record")
-          cam.ChangeSetting("rec_mode", "record")
-    elif self.systemmode == 1:
-      self.btnrecord.text = 'PHOTO'
-      for cam in self.cam:
-        if cam.link:
-          cam.ChangeSetting("system_mode", "capture")
-          cam.ChangeSetting("system_default_mode", "capture")
-          cam.ChangeSetting("capture_default_mode", "precise quality")
-          cam.ChangeSetting("capture_mode", "precise quality")
-    # camera config
-    cfg_change = False
-    if len(self.get_screen('config').children[0].children) > 0:
-      popup = self.get_screen('config').children[0].children[0]
-      if self.CheckIPAddress(popup.network,3):
-        segment = popup.network.split(".")
-        network = segment[0] + '.' + segment[1] + '.' + segment[2]
-      else:
-        network = '192.168.31'
-      oldcfglist = []
-      for i in range(7):
-        oldcfglist.append(dict(self.cfglist[i]))
-        ip = network + '.' + popup.cfg[i]["ip"]
-        newcfg = dict(popup.cfg[i])
-        if self.CheckIPAddress(ip):
-          newcfg["ip"] = popup.network + '.' + newcfg["ip"]
+          threading.Thread(target=self.DoSetConfig, args=(i,"led_mode",), name="%sDoSetConfig" %cam.name).start()
+        i += 1
+      self.systemmode = popup.systemmode
+      if self.systemmode == 0:
+        self.btnrecord.text = 'RECORD'
+        for cam in self.cam:
+          if cam.link:
+            cam.ChangeSetting("system_mode", "record")
+            cam.ChangeSetting("system_default_mode", "record")
+            cam.ChangeSetting("rec_default_mode", "record")
+            cam.ChangeSetting("rec_mode", "record")
+      elif self.systemmode == 1:
+        self.btnrecord.text = 'PHOTO'
+        for cam in self.cam:
+          if cam.link:
+            cam.ChangeSetting("system_mode", "capture")
+            cam.ChangeSetting("system_default_mode", "capture")
+            cam.ChangeSetting("capture_default_mode", "precise quality")
+            cam.ChangeSetting("capture_mode", "precise quality")
+      # camera config
+      cfg_change = False
+      if len(self.get_screen('config').children[0].children) > 0:
+        popup = self.get_screen('config').children[0].children[0]
+        if self.CheckIPAddress(popup.network,3):
+          segment = popup.network.split(".")
+          network = segment[0] + '.' + segment[1] + '.' + segment[2]
         else:
-          newcfg["ip"] = popup.network + '.%d' %(101 + i)
-        
-        if json.dumps(newcfg,sort_keys=True) <> json.dumps(self.cfglist[i],sort_keys=True):
-          self.cfglist[i] = dict(newcfg)
-          cfg_change = True
-    self.WriteConfig()
-    self.cfglist = self.ReadConfig()
-    if cfg_change:
-      Clock.unschedule(self.RenewCameraConfig)
-      Clock.schedule_once(partial(self.RenewCameraConfig, oldcfglist))
-
+          network = '192.168.31'
+        oldcfglist = []
+        for i in range(7):
+          oldcfglist.append(dict(self.cfglist[i]))
+          ip = network + '.' + popup.cfg[i]["ip"]
+          newcfg = dict(popup.cfg[i])
+          if self.CheckIPAddress(ip):
+            newcfg["ip"] = popup.network + '.' + newcfg["ip"]
+          else:
+            newcfg["ip"] = popup.network + '.%d' %(101 + i)
+          
+          if json.dumps(newcfg,sort_keys=True) <> json.dumps(self.cfglist[i],sort_keys=True):
+            self.cfglist[i] = dict(newcfg)
+            cfg_change = True
+      self.WriteConfig()
+      self.cfglist = self.ReadConfig()
+      if cfg_change:
+        Clock.unschedule(self.RenewCameraConfig)
+        Clock.schedule_once(partial(self.RenewCameraConfig, oldcfglist))
+  
+      #Clock.unschedule(self.XCfgCamerasDraw)
+      #Clock.schedule_once(self.XCfgCamerasDraw)
+      i = 0
+      for cam in self.cam:
+        if cam.link:
+          self.lblcam[i].status = 'link'
+        i += 1
     Clock.unschedule(self.XCfgAdvancedDraw)
     Clock.schedule_once(self.XCfgAdvancedDraw)
-    Clock.unschedule(self.XCfgCamerasDraw)
-    Clock.schedule_once(self.XCfgCamerasDraw)
-    i = 0
-    for cam in self.cam:
-      if cam.link:
-        self.lblcam[i].status = 'link'
-      i += 1
+    self.XcfgCamLoad = False
+    self.get_screen('config').children[0].clear_widgets()
 
   def RenewCameraConfig(self,*args):
+    print 'RenewCameraConfig'
     for index in range(7):
       oldcfg = args[0][index]
       newcfg = dict(self.cfglist[index])
@@ -1774,14 +1863,12 @@ class XPonerine(ScreenManager):
     # if self.linked == self.maxcam:
       # Clock.unschedule(self.RedrawMeter)
       # Clock.schedule_once(self.RedrawMeter)
-    if recstatus not in ("record","recording"):
-      # check resolution
-      cam.CheckSetting("video_resolution")
-      if self.linked == self.maxcam:
+    if self.linked == self.maxcam:
+      if recstatus not in ("record","recording"):
         self.btnrecord.disabled = False
         self.btnmeter.disabled = False
-        Clock.unschedule(self.XCfgExposureDraw)
-        Clock.schedule_once(self.XCfgExposureDraw)
+      Clock.unschedule(self.XCfgExposureDraw)
+      Clock.schedule_once(self.XCfgExposureDraw)
     midx = self.lblcam[index].memory
     while not cam.quit.isSet():
       cam.taken.wait(1)
@@ -2188,7 +2275,7 @@ class XPonerineApp(App):
     xponerine.InitControls()
     #xponerine.DetectCam()
     Clock.unschedule(xponerine.DetectCam)
-    Clock.schedule_once(xponerine.DetectCam,2)
+    Clock.schedule_once(xponerine.DetectCam,1)
     #xponerine.inited = True
     return xponerine
     
