@@ -532,7 +532,7 @@ class XPonerine(ScreenManager):
       elif retry == 0:
         if timewait < 10:
           timewait += 1
-        else:
+        elif timewait > 5:
           self.lblcam[index].status = "off"
   
   def DoSetConfig(self, index, type, force=True):
