@@ -506,6 +506,8 @@ class XPonerine(ScreenManager):
     socket.setdefaulttimeout(5)
     retry = 0
     timewait = 1
+    t0 = time.time()
+    td = 0.0
     while True:
       t1 = time.time()
       while (time.time() - t1) < timewait:
@@ -532,8 +534,17 @@ class XPonerine(ScreenManager):
       elif retry == 0:
         if timewait < 10:
           timewait += 1
-        elif timewait > 5:
-          self.lblcam[index].status = "off"
+      # 3.0 minutes
+      if (time.time()-t0) >= (180.0 - td):
+        self.lblcam[index].status = "enable"
+        print "DoDetectCam %d renew" %index
+        t0 = time.time()
+        td = 30.0
+        timewait = 1
+      # 2.5 minutes
+      elif (time.time()-t0) >= (150.0 - td):
+        self.lblcam[index].status = "off"
+        print "DoDetectCam %d error" %index
   
   def DoSetConfig(self, index, type, force=True):
     cam = self.cam[index]
