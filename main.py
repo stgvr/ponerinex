@@ -587,6 +587,7 @@ class XPonerine(ScreenManager):
       else:
         cam.ChangeSetting(type,self.meterlist[self.cammetermode])
     elif type == "preview_status":
+      print "DoSetConfig preview_status"
       if cam.cfgdict.has_key(type):
         if cam.preview:
           if cam.cfgdict[type] == "off":
@@ -605,7 +606,7 @@ class XPonerine(ScreenManager):
           cam.StopViewfinder()
           cam.ChangeSetting(type,"off")
           
-  def DoReadAllStatus(self, index):
+  def DoReadAllStatus(self, index, recstatus):
     cam = self.cam[index]
     setallok = cam.setallok
     setallerror = cam.setallerror
@@ -618,12 +619,7 @@ class XPonerine(ScreenManager):
         readerror = True
         break
     print "Read %d All Status %s" %(index, time.time()-t1)
-    recstatus = ""
-    if cam.cfgdict.has_key("app_status"):
-      recstatus = cam.cfgdict["app_status"]
-    if recstatus in ("record","recording"):
-      return
-    if cam.token == 1:
+    if cam.token == 1 and recstatus not in ("record","recording"):
       setok = cam.setok
       t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()+ index * 10))
       cam.ChangeSetting("camera_clock", t)
@@ -653,12 +649,17 @@ class XPonerine(ScreenManager):
         threading.Thread(target=self.DoSetConfig, args=(index,"buzzer_volume",readerror,), name="%sDoSetConfig" %cam.name).start()
       # set meter mode
       threading.Thread(target=self.DoSetConfig, args=(index,"meter_mode",readerror,), name="%sDoSetConfig" %cam.name).start()
-      # set preview status
-      threading.Thread(target=self.DoSetConfig, args=(index,"preview_status",readerror,), name="%sDoSetConfig" %cam.name).start()
       # check led mod
       threading.Thread(target=self.DoSetConfig, args=(index,"led_mode",readerror,), name="%sDoSetConfig" %cam.name).start()
       # start wifi on boot
       threading.Thread(target=self.DoSetConfig, args=(index,"start_wifi_while_booted",readerror,), name="%sDoSetConfig" %cam.name).start()
+      # set preview status
+      threading.Thread(target=self.DoSetConfig, args=(index,"preview_status",readerror,), name="%sDoSetConfig" %cam.name).start()
+      
+    threading.Thread(target=self.DoFileTaken, args=(index,recstatus,), name="%sDoFileTaken" %cam.name).start()
+    threading.Thread(target=self.DoStartRecord, args=(index,recstatus,), name="%sDoStartRecord" %cam.name).start()
+    if cam.preview:
+      cam.StartViewfinder()
     
   def DoConnect(self, index):
     print "Doconnect camera %d" %index
@@ -711,9 +712,8 @@ class XPonerine(ScreenManager):
     self.lblcam[index].memory = 0
     self.lblcam[index].adapter = 0
     self.lblcam[index].bind(battery=self.DrawCamera,adapter=self.DrawCamera,memory=self.DrawCamera)
-    threading.Thread(target=self.DoReadAllStatus, name="%sDoReadAllStatus" %cam.name, args=(index,)).start()
-    threading.Thread(target=self.DoFileTaken, args=(index,recstatus,), name="%sDoFileTaken" %cam.name).start()
-    threading.Thread(target=self.DoStartRecord, args=(index,recstatus,), name="%sDoStartRecord" %cam.name).start()
+    
+    threading.Thread(target=self.DoReadAllStatus, name="%sDoReadAllStatus" %cam.name, args=(index,recstatus,)).start()
     
     while True:
       if cam.status.has_key("battery"):
@@ -1028,7 +1028,7 @@ class XPonerine(ScreenManager):
       btnrecord.disabled = True
       self.btnsetting.disabled = True
       self.btnmeter.disabled = True
-    elif btnrecord.text == "STOP":
+    elif btnrecord.text == 'STOP':
       btnrecord.disabled = True
       if self.buzzeronstop == 1:
         self.lblcam[self.firstcam].status = 'beep'
@@ -1038,7 +1038,7 @@ class XPonerine(ScreenManager):
         self.trec = 0
         self.recordstart.clear()
         self.recordstop.set()
-    elif btnrecord.text == "PHOTO":
+    elif btnrecord.text == 'PHOTO':
       btnrecord.disabled = True
       self.btnsetting.disabled = True
       self.btnmeter.disabled = True
@@ -1232,6 +1232,7 @@ class XPonerine(ScreenManager):
           if cam.link:
             self.lblcam[i].status = 'busy'
           i += 1
+    self.btnrecord.text = ' ' + self.btnrecord.text + ' '
     self.current = 'main'
 #     if apply:
 #       threading.Thread(target=self.DoXCfgExposureApply, args=(popup,), name="DoXCfgExposureApply").start()
@@ -1305,6 +1306,8 @@ class XPonerine(ScreenManager):
     Clock.schedule_once(self.XCfgExposureDraw)
     self.XcfgStaLoad = False
     self.get_screen('status').children[0].clear_widgets()
+    Clock.unschedule(self.RefreshButtonName)
+    Clock.schedule_once(self.RefreshButtonName)
     
   def ManualExposure(self, idx_shutter, idx_iso):
     #1/ 30s: 1012
@@ -1532,6 +1535,7 @@ class XPonerine(ScreenManager):
         if cam.link:
           self.lblcam[i].status = 'busy'
         i += 1
+    self.btnrecord.text = ' ' + self.btnrecord.text + ' '
     self.current = 'main'
     self.XcfgAdvApply = apply
     #self.testdelay = time.time()
@@ -1580,7 +1584,7 @@ class XPonerine(ScreenManager):
         i += 1
       self.systemmode = popup.systemmode
       if self.systemmode == 0:
-        self.btnrecord.text = 'RECORD'
+        self.btnrecord.text = ' RECORD '
         for cam in self.cam:
           if cam.link:
             cam.ChangeSetting("system_mode", "record")
@@ -1588,7 +1592,7 @@ class XPonerine(ScreenManager):
             cam.ChangeSetting("rec_default_mode", "record")
             cam.ChangeSetting("rec_mode", "record")
       elif self.systemmode == 1:
-        self.btnrecord.text = 'PHOTO'
+        self.btnrecord.text = ' PHOTO '
         for cam in self.cam:
           if cam.link:
             cam.ChangeSetting("system_mode", "capture")
@@ -1613,8 +1617,10 @@ class XPonerine(ScreenManager):
             newcfg["ip"] = popup.network + '.' + newcfg["ip"]
           else:
             newcfg["ip"] = popup.network + '.%d' %(101 + i)
-          
-          if json.dumps(newcfg,sort_keys=True) <> json.dumps(self.cfglist[i],sort_keys=True):
+          #if json.dumps(newcfg,sort_keys=True) <> json.dumps(self.cfglist[i],sort_keys=True):
+          if json.dumps(newcfg,sort_keys=True) <> json.dumps(oldcfglist[i],sort_keys=True):
+            print json.dumps(newcfg,sort_keys=True)
+            print json.dumps(oldcfglist[i],sort_keys=True)
             self.cfglist[i] = dict(newcfg)
             cfg_change = True
       self.WriteConfig()
@@ -1634,7 +1640,13 @@ class XPonerine(ScreenManager):
     Clock.schedule_once(self.XCfgAdvancedDraw)
     self.XcfgCamLoad = False
     self.get_screen('config').children[0].clear_widgets()
+    Clock.unschedule(self.RefreshButtonName)
+    Clock.schedule_once(self.RefreshButtonName)
 
+  def RefreshButtonName(self,*args):
+    print 'RefreshButtonName'
+    self.btnrecord.text = self.btnrecord.text.split()[0]
+  
   def RenewCameraConfig(self,*args):
     print 'RenewCameraConfig'
     for index in range(7):
@@ -1684,13 +1696,16 @@ class XPonerine(ScreenManager):
           threading.Thread(target=self.DoSetPreview, args = (index,newcfg["preview"],),name="DoSetPreview%d" %index).start()
 
   def DoSetPreview(self, index, preview):
+    print "DoSetPreview %d %s" %(index, preview)
     cam = self.cam[index]
     if cam.cfgdict.has_key("preview_status"):
       oldpreview = cam.cfgdict["preview_status"]
     else:
       oldpreview = ""
+    print "oldpreview", oldpreview
     setok = cam.setok
     if preview == 0 and oldpreview != "off": #off
+      print "set pv off"
       cam.StopViewfinder()
       i = 0
       while cam.vfstart:
@@ -1705,6 +1720,7 @@ class XPonerine(ScreenManager):
       time.sleep(1)
       cam.preview = False
     elif preview == 1 and oldpreview != "on": #on
+      print "set pv on"
       cam.StopViewfinder()
       i = 0
       while cam.vfstart:
@@ -1719,6 +1735,7 @@ class XPonerine(ScreenManager):
       cam.StartViewfinder()
       time.sleep(1)
       cam.preview = True
+    cam.CheckSetting("preview_status")
     self.lblcam[index].status = 'link'
 
   def DoRestoreFactory(self, index):
@@ -1886,7 +1903,7 @@ class XPonerine(ScreenManager):
       cam.taken.wait(1)
       #trigger record start by camera
       if self.systemmode == 0 and recstatus not in ("record","recording"): #video
-        if not self.recordstart.isSet() and self.btnrecord.text == "RECORD" and cam.recording.isSet():
+        if not self.recordstart.isSet() and self.btnrecord.text == 'RECORD' and cam.recording.isSet():
           print "trigger record start by camera %d" %index
           self.recstart = -index
           self.rename = 0
