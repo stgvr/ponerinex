@@ -1,2 +1,0 @@
-<appversion>0.0.8</appversion>
-<scriptversion>0.0.8</scriptversion>
